@@ -52,7 +52,7 @@ func TestBuild(t *testing.T) {
 	if r.Mission.Day != 210 || r.Mission.GravityG != 0.38 || r.Mission.CommDelayMaxS != 1320 {
 		t.Errorf("mission = %+v", r.Mission)
 	}
-	if r.Readiness.Score == nil || *r.Readiness.Score > 49 || !r.Readiness.CappedByCritical || r.Readiness.FreshIndicators != 4 || r.Readiness.TotalIndicators != 9 {
+	if r.Readiness.Score == nil || *r.Readiness.Score > 49 || !r.Readiness.CappedByCritical || r.Readiness.FreshIndicators != 4 || r.Readiness.TotalIndicators != 10 {
 		t.Errorf("readiness = %+v", r.Readiness)
 	}
 
@@ -82,8 +82,8 @@ func TestBuild(t *testing.T) {
 	if _, ok := alerts["heart_rate"]; ok {
 		t.Error("nominal reading reported as an alert")
 	}
-	if len(r.Stale) != 5 {
-		t.Errorf("stale = %d, want 5 indicators without a reading", len(r.Stale))
+	if len(r.Stale) != 6 {
+		t.Errorf("stale = %d, want 6 indicators without a reading", len(r.Stale))
 	}
 
 	var bp Trend

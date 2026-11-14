@@ -51,7 +51,7 @@ func TestMissionAndCatalog(t *testing.T) {
 		Risks      []any            `json:"risks"`
 	}
 	e.do(http.MethodGet, "/api/v1/indicators", nil, http.StatusOK, &cat)
-	if cat.Disclaimer == "" || len(cat.Indicators) != 9 || len(cat.Systems) != 7 || len(cat.Risks) == 0 {
+	if cat.Disclaimer == "" || len(cat.Indicators) != 10 || len(cat.Systems) != 7 || len(cat.Risks) == 0 {
 		t.Errorf("catalog: %d indicators, %d systems, %d risks", len(cat.Indicators), len(cat.Systems), len(cat.Risks))
 	}
 	if _, ok := cat.Indicators[0]["howToMeasure"]; !ok {
@@ -176,6 +176,8 @@ func TestCreateMeasurementValidation(t *testing.T) {
 		{"future time", map[string]any{"measurements": []any{map[string]any{"indicator": "heart_rate", "value": 70, "measuredAt": "2030-01-01T00:00:00Z"}}}},
 		{"bad context", map[string]any{"measurements": []any{map[string]any{"indicator": "heart_rate", "value": 70, "context": "lunch"}}}},
 		{"unknown field", map[string]any{"measurements": []any{map[string]any{"indicator": "heart_rate", "value": 70, "unit": "bpm"}}}},
+		{"bad source", map[string]any{"measurements": []any{map[string]any{"indicator": "heart_rate", "value": 70, "source": "satellite"}}}},
+		{"device on a scale", map[string]any{"measurements": []any{map[string]any{"indicator": "mood", "value": 3, "source": "device"}}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -32,8 +32,8 @@ func (s Queries) AccountByUsername(ctx context.Context, username string) (Accoun
 	var role string
 	var missionID sql.NullInt64
 	err := s.q.QueryRowContext(ctx,
-		`SELECT id, mission_id, name, role, username, password_hash FROM astronauts WHERE username = ?`, username).
-		Scan(&acc.Astronaut.ID, &missionID, &acc.Astronaut.Name, &role, &acc.Username, &acc.PasswordHash)
+		`SELECT id, mission_id, name, role, module_code, username, password_hash FROM astronauts WHERE username = ?`, username).
+		Scan(&acc.Astronaut.ID, &missionID, &acc.Astronaut.Name, &role, &acc.Astronaut.Module, &acc.Username, &acc.PasswordHash)
 	if errors.Is(err, sql.ErrNoRows) {
 		return acc, ErrNotFound
 	}
@@ -48,7 +48,7 @@ func (s Queries) AccountByUsername(ctx context.Context, username string) (Accoun
 // ListAccounts returns the members of a mission who can sign in, in ID order.
 func (s Queries) ListAccounts(ctx context.Context, missionID int64) ([]Account, error) {
 	rows, err := s.q.QueryContext(ctx,
-		`SELECT id, mission_id, name, role, username FROM astronauts WHERE mission_id = ? AND username IS NOT NULL ORDER BY id`, missionID)
+		`SELECT id, mission_id, name, role, module_code, username FROM astronauts WHERE mission_id = ? AND username IS NOT NULL ORDER BY id`, missionID)
 	if err != nil {
 		return nil, fmt.Errorf("storage: list accounts: %w", err)
 	}
@@ -57,7 +57,7 @@ func (s Queries) ListAccounts(ctx context.Context, missionID int64) ([]Account, 
 	for rows.Next() {
 		var acc Account
 		var role string
-		if err := rows.Scan(&acc.Astronaut.ID, &acc.Astronaut.MissionID, &acc.Astronaut.Name, &role, &acc.Username); err != nil {
+		if err := rows.Scan(&acc.Astronaut.ID, &acc.Astronaut.MissionID, &acc.Astronaut.Name, &role, &acc.Astronaut.Module, &acc.Username); err != nil {
 			return nil, fmt.Errorf("storage: scan account: %w", err)
 		}
 		acc.Astronaut.Role = domain.Role(role)
@@ -83,10 +83,10 @@ func (s Queries) SessionAccount(ctx context.Context, tokenHash string, now time.
 	var role string
 	var missionID sql.NullInt64
 	err := s.q.QueryRowContext(ctx, `
-		SELECT a.id, a.mission_id, a.name, a.role, a.username
+		SELECT a.id, a.mission_id, a.name, a.role, a.module_code, a.username
 		FROM sessions s JOIN astronauts a ON a.id = s.astronaut_id
 		WHERE s.token_hash = ? AND s.expires_at > ?`, tokenHash, fmtTime(now)).
-		Scan(&acc.Astronaut.ID, &missionID, &acc.Astronaut.Name, &role, &acc.Username)
+		Scan(&acc.Astronaut.ID, &missionID, &acc.Astronaut.Name, &role, &acc.Astronaut.Module, &acc.Username)
 	if errors.Is(err, sql.ErrNoRows) {
 		return acc, ErrNotFound
 	}
@@ -109,7 +109,7 @@ func (s Queries) DeleteSession(ctx context.Context, tokenHash string) error {
 // DeleteAll removes every mission, member, reading, activity and session —
 // used to reset the demo before seeding it again (FR-62).
 func (s Queries) DeleteAll(ctx context.Context) error {
-	for _, table := range []string{"sessions", "measurements", "activities", "astronauts", "mission_phases", "missions"} {
+	for _, table := range []string{"sessions", "supply_transactions", "supplies", "telemetry", "modules", "measurements", "activities", "astronauts", "mission_phases", "missions"} {
 		if _, err := s.q.ExecContext(ctx, "DELETE FROM "+table); err != nil {
 			return fmt.Errorf("storage: clear %s: %w", table, err)
 		}

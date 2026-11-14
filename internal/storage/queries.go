@@ -86,8 +86,8 @@ func (s Queries) CreateMission(ctx context.Context, m *domain.Mission) error {
 	if len(m.Phases) > 0 {
 		env = string(m.Phases[0].Environment)
 	}
-	res, err := s.q.ExecContext(ctx, `INSERT INTO missions (name, environment, started_at) VALUES (?, ?, ?)`,
-		m.Name, env, fmtTime(m.StartedAt))
+	res, err := s.q.ExecContext(ctx, `INSERT INTO missions (name, environment, started_at, planned_end_at) VALUES (?, ?, ?, ?)`,
+		m.Name, env, fmtTime(m.StartedAt), fmtTimePtr(m.PlannedEndAt))
 	if err != nil {
 		return fmt.Errorf("storage: insert mission: %w", err)
 	}
@@ -113,8 +113,9 @@ func (s Queries) CreateMission(ctx context.Context, m *domain.Mission) error {
 func (s Queries) CurrentMission(ctx context.Context) (domain.Mission, error) {
 	var m domain.Mission
 	var started string
-	err := s.q.QueryRowContext(ctx, `SELECT id, name, started_at FROM missions ORDER BY started_at DESC, id DESC LIMIT 1`).
-		Scan(&m.ID, &m.Name, &started)
+	var plannedEnd sql.NullString
+	err := s.q.QueryRowContext(ctx, `SELECT id, name, started_at, planned_end_at FROM missions ORDER BY started_at DESC, id DESC LIMIT 1`).
+		Scan(&m.ID, &m.Name, &started, &plannedEnd)
 	if errors.Is(err, sql.ErrNoRows) {
 		return m, ErrNotFound
 	}
@@ -123,6 +124,9 @@ func (s Queries) CurrentMission(ctx context.Context) (domain.Mission, error) {
 	}
 	if m.StartedAt, err = parseTime(started); err != nil {
 		return m, fmt.Errorf("storage: mission started_at: %w", err)
+	}
+	if m.PlannedEndAt, err = parseTimePtr(plannedEnd); err != nil {
+		return m, fmt.Errorf("storage: mission planned_end_at: %w", err)
 	}
 
 	rows, err := s.q.QueryContext(ctx,
@@ -154,8 +158,8 @@ func (s Queries) CurrentMission(ctx context.Context) (domain.Mission, error) {
 // --- astronauts -----------------------------------------------------------------
 
 func (s Queries) CreateAstronaut(ctx context.Context, a *domain.Astronaut) error {
-	res, err := s.q.ExecContext(ctx, `INSERT INTO astronauts (mission_id, name, role) VALUES (?, ?, ?)`,
-		a.MissionID, a.Name, string(a.Role))
+	res, err := s.q.ExecContext(ctx, `INSERT INTO astronauts (mission_id, name, role, module_code) VALUES (?, ?, ?, ?)`,
+		a.MissionID, a.Name, string(a.Role), a.Module)
 	if err != nil {
 		return fmt.Errorf("storage: insert astronaut: %w", err)
 	}
@@ -166,7 +170,7 @@ func (s Queries) CreateAstronaut(ctx context.Context, a *domain.Astronaut) error
 }
 
 func (s Queries) ListAstronauts(ctx context.Context, missionID int64) ([]domain.Astronaut, error) {
-	rows, err := s.q.QueryContext(ctx, `SELECT id, mission_id, name, role FROM astronauts WHERE mission_id = ? ORDER BY id`, missionID)
+	rows, err := s.q.QueryContext(ctx, `SELECT id, mission_id, name, role, module_code FROM astronauts WHERE mission_id = ? ORDER BY id`, missionID)
 	if err != nil {
 		return nil, fmt.Errorf("storage: list astronauts: %w", err)
 	}
@@ -175,7 +179,7 @@ func (s Queries) ListAstronauts(ctx context.Context, missionID int64) ([]domain.
 	for rows.Next() {
 		var a domain.Astronaut
 		var role string
-		if err := rows.Scan(&a.ID, &a.MissionID, &a.Name, &role); err != nil {
+		if err := rows.Scan(&a.ID, &a.MissionID, &a.Name, &role, &a.Module); err != nil {
 			return nil, fmt.Errorf("storage: scan astronaut: %w", err)
 		}
 		a.Role = domain.Role(role)
@@ -188,8 +192,8 @@ func (s Queries) GetAstronaut(ctx context.Context, id int64) (domain.Astronaut, 
 	var a domain.Astronaut
 	var role string
 	var missionID sql.NullInt64
-	err := s.q.QueryRowContext(ctx, `SELECT id, mission_id, name, role FROM astronauts WHERE id = ?`, id).
-		Scan(&a.ID, &missionID, &a.Name, &role)
+	err := s.q.QueryRowContext(ctx, `SELECT id, mission_id, name, role, module_code FROM astronauts WHERE id = ?`, id).
+		Scan(&a.ID, &missionID, &a.Name, &role, &a.Module)
 	if errors.Is(err, sql.ErrNoRows) {
 		return a, ErrNotFound
 	}

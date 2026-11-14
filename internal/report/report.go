@@ -19,6 +19,7 @@ import (
 	"aura/internal/domain"
 	"aura/internal/guidance"
 	"aura/internal/readiness"
+	"aura/internal/vehicle"
 )
 
 // Window is how far back the trends look.
@@ -30,7 +31,9 @@ type Input struct {
 	Astronaut       domain.Astronaut
 	Assessment      readiness.Result
 	Recommendations []guidance.Recommendation
-	History         []domain.Measurement // readings in the last Window, any order
+	History         []domain.Measurement  // readings in the last Window, any order
+	Cabin           *vehicle.ModuleResult // the member's module now, if known
+	CabinHistory    []domain.Telemetry    // that module's telemetry in the last Window
 	Now             time.Time
 }
 
@@ -44,7 +47,28 @@ type Report struct {
 	Stale           []Stale                   `json:"stale"`
 	Recommendations []guidance.Recommendation `json:"recommendations"`
 	Trends          []Trend                   `json:"trends"`
+	Cabin           *Cabin                    `json:"cabin"` // null when the member is not in a module
 	Disclaimer      string                    `json:"disclaimer"`
+}
+
+// Cabin is the air in the member's module: now and over the window (FR-84).
+type Cabin struct {
+	Module     string       `json:"module"`
+	Name       string       `json:"name"`
+	Parameters []CabinTrend `json:"parameters"`
+}
+
+type CabinTrend struct {
+	Parameter string        `json:"parameter"`
+	Name      string        `json:"name"`
+	Unit      string        `json:"unit"`
+	Nominal   string        `json:"nominal"`
+	Status    domain.Status `json:"status"`
+	Value     *float64      `json:"value"`
+	Min       *float64      `json:"min"`
+	Max       *float64      `json:"max"`
+	// Readings outside the nominal range in the window.
+	OffNominal int `json:"offNominal"`
 }
 
 type Mission struct {
@@ -165,7 +189,39 @@ func Build(in Input) Report {
 		r.Trends = append(r.Trends, trend(ind, nominal, byIndicator[ind.Code], in.Mission))
 	}
 	slices.SortStableFunc(r.Alerts, func(a, b Alert) int { return cmp.Compare(b.Status.Severity(), a.Status.Severity()) })
+	if in.Cabin != nil {
+		r.Cabin = cabin(in.Catalog, *in.Cabin, in.CabinHistory)
+	}
 	return r
+}
+
+func cabin(cat *catalog.Catalog, mod vehicle.ModuleResult, history []domain.Telemetry) *Cabin {
+	c := &Cabin{Module: mod.Code, Name: mod.Name, Parameters: []CabinTrend{}}
+	for _, pr := range mod.Parameters {
+		p, ok := cat.VehicleParameter(pr.Code)
+		if !ok {
+			continue
+		}
+		ct := CabinTrend{Parameter: p.Code, Name: p.Name, Unit: p.Unit, Nominal: p.Thresholds.Nominal.String(), Status: pr.Status, Value: pr.Value}
+		for _, t := range history {
+			if t.Parameter != p.Code {
+				continue
+			}
+			v := t.Value
+			if ct.Min == nil || v < *ct.Min {
+				ct.Min = &v
+			}
+			if ct.Max == nil || v > *ct.Max {
+				x := v
+				ct.Max = &x
+			}
+			if p.Thresholds.Classify(v) != domain.StatusNominal {
+				ct.OffNominal++
+			}
+		}
+		c.Parameters = append(c.Parameters, ct)
+	}
+	return c
 }
 
 func trend(ind catalog.Indicator, nominal catalog.Range, ms []domain.Measurement, mission domain.Mission) Trend {
@@ -336,6 +392,17 @@ func Text(r Report) string {
 		}
 	}
 	line("")
+
+	if r.Cabin != nil {
+		line("CABIN AIR — %s, LAST 7 DAYS", strings.ToUpper(r.Cabin.Name))
+		tw := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(tw, "  Parameter\tNow\tClass\tNominal\tMin\tMax\tOff-nominal\t")
+		for _, c := range r.Cabin.Parameters {
+			fmt.Fprintf(tw, "  %s\t%s %s\t%s\t%s\t%s\t%s\t%d\t\n", c.Name, opt(c.Value), c.Unit, className(c.Status), c.Nominal, opt(c.Min), opt(c.Max), c.OffNominal)
+		}
+		tw.Flush()
+		line("")
+	}
 
 	line("TRENDS, LAST 7 DAYS")
 	tw := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)

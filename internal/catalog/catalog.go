@@ -28,12 +28,15 @@ type Catalog struct {
 	Environments   []Environment `yaml:"environments" json:"environments"`
 	Systems        []System      `yaml:"systems" json:"systems"`
 	Indicators     []Indicator   `yaml:"indicators" json:"indicators"`
-	Rules          []Rule        `yaml:"rules" json:"-"`
+	// Life-support parameters of the vehicle (REQUIREMENTS §5.9).
+	VehicleParameters []VehicleParameter `yaml:"vehicle_parameters" json:"vehicleParameters"`
+	Rules             []Rule             `yaml:"rules" json:"-"`
 
 	indicatorIdx   map[string]int
 	systemIdx      map[string]int
 	environmentIdx map[domain.Environment]int
 	ruleIdx        map[string]int
+	vehicleIdx     map[string]int
 }
 
 type Hazard struct {
@@ -135,6 +138,8 @@ type Advice struct {
 	Action         string `yaml:"action" json:"action"`
 	RecheckMinutes int    `yaml:"recheck_minutes" json:"recheckMinutes"`
 	Escalate       bool   `yaml:"escalate" json:"escalate"`
+	// Codes of medical supplies the action needs (FR-93).
+	Supplies []string `yaml:"supplies" json:"supplies"`
 }
 
 type Guidance struct {
@@ -193,12 +198,33 @@ func (ind Indicator) Classify(v float64, env domain.Environment) domain.Status {
 }
 
 type Rule struct {
-	ID             string `yaml:"id"`
-	Title          string `yaml:"title"`
-	Action         string `yaml:"action"`
-	RecheckMinutes int    `yaml:"recheck_minutes"`
-	EscalateReason string `yaml:"escalate_reason"`
+	ID             string   `yaml:"id"`
+	Title          string   `yaml:"title"`
+	Action         string   `yaml:"action"`
+	RecheckMinutes int      `yaml:"recheck_minutes"`
+	EscalateReason string   `yaml:"escalate_reason"`
+	Supplies       []string `yaml:"supplies"`
 }
+
+// VehicleParameter is a life-support reading per module (FR-80): same
+// threshold rule and alert classes as health indicators.
+type VehicleParameter struct {
+	Code             string     `yaml:"code" json:"code"`
+	Name             string     `yaml:"name" json:"name"`
+	ShortName        string     `yaml:"short_name" json:"shortName"`
+	Unit             string     `yaml:"unit" json:"unit"`
+	System           string     `yaml:"system" json:"system"` // body system it affects most
+	Min              float64    `yaml:"min" json:"min"`       // physically possible sensor range
+	Max              float64    `yaml:"max" json:"max"`
+	Step             float64    `yaml:"step" json:"step"`
+	FreshnessMinutes int        `yaml:"freshness_minutes" json:"freshnessMinutes"`
+	Thresholds       Thresholds `yaml:"thresholds" json:"thresholds"`
+	About            string     `yaml:"about" json:"about"`
+	Guidance         Guidance   `yaml:"guidance" json:"guidance"`
+}
+
+// FormatValue renders a reading with its unit: "3.8 mmHg".
+func (p VehicleParameter) FormatValue(v float64) string { return FormatNumber(v) + " " + p.Unit }
 
 var defaultCatalog = sync.OnceValues(func() (*Catalog, error) { return Parse(embedded) })
 
@@ -247,6 +273,14 @@ func (c *Catalog) Environment(code domain.Environment) (Environment, bool) {
 	return c.Environments[i], true
 }
 
+func (c *Catalog) VehicleParameter(code string) (VehicleParameter, bool) {
+	i, ok := c.vehicleIdx[code]
+	if !ok {
+		return VehicleParameter{}, false
+	}
+	return c.VehicleParameters[i], true
+}
+
 func (c *Catalog) Rule(id string) (Rule, bool) {
 	i, ok := c.ruleIdx[id]
 	if !ok {
@@ -260,6 +294,13 @@ func (c *Catalog) index() error {
 	c.systemIdx = map[string]int{}
 	c.environmentIdx = map[domain.Environment]int{}
 	c.ruleIdx = map[string]int{}
+	c.vehicleIdx = map[string]int{}
+	for i, x := range c.VehicleParameters {
+		if _, dup := c.vehicleIdx[x.Code]; dup {
+			return fmt.Errorf("catalog: duplicate vehicle parameter %q", x.Code)
+		}
+		c.vehicleIdx[x.Code] = i
+	}
 	for i, x := range c.Indicators {
 		if _, dup := c.indicatorIdx[x.Code]; dup {
 			return fmt.Errorf("catalog: duplicate indicator %q", x.Code)
@@ -358,6 +399,26 @@ func (c *Catalog) validate() error {
 		for _, a := range []Advice{ind.Guidance.Caution, ind.Guidance.Critical} {
 			if a.Title == "" || a.Action == "" {
 				fail("indicator %s: guidance needs title and action for caution and critical", ind.Code)
+				break
+			}
+		}
+	}
+	for _, p := range c.VehicleParameters {
+		if p.Name == "" || p.ShortName == "" || p.Unit == "" || p.About == "" {
+			fail("vehicle parameter %s: name, short_name, unit and about are required", p.Code)
+		}
+		if _, ok := c.systemIdx[p.System]; !ok {
+			fail("vehicle parameter %s: unknown system %q", p.Code, p.System)
+		}
+		if p.Min >= p.Max || p.Step <= 0 || p.FreshnessMinutes <= 0 {
+			fail("vehicle parameter %s: need min < max, step > 0 and freshness_minutes > 0", p.Code)
+		}
+		if !p.Thresholds.Caution.covers(p.Thresholds.Nominal) {
+			fail("vehicle parameter %s: caution range must contain the nominal range", p.Code)
+		}
+		for _, a := range []Advice{p.Guidance.Caution, p.Guidance.Critical} {
+			if a.Title == "" || a.Action == "" {
+				fail("vehicle parameter %s: guidance needs title and action for caution and critical", p.Code)
 				break
 			}
 		}

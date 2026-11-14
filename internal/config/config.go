@@ -15,7 +15,13 @@ type Config struct {
 	LogLevel  slog.Level // AURA_LOG_LEVEL: debug|info|warn|error, default "info"
 	StaticDir string     // AURA_STATIC_DIR: built frontend to serve at "/"; empty = API only
 	Seed      bool       // AURA_SEED: "auto" (default) fills an empty DB with demo data; "off" disables
+	// AURA_INGEST_TOKEN: bearer token for POST /api/v1/ingest (onboard systems).
+	// Empty = ingest disabled, except in demo mode, which uses DemoIngestToken.
+	IngestToken string
 }
+
+// DemoIngestToken is the ingest token of the public demo (documented in the README).
+const DemoIngestToken = "aura-demo-ingest"
 
 // Load reads configuration from the environment.
 func Load() (Config, error) {
@@ -36,6 +42,10 @@ func Load() (Config, error) {
 	case "off":
 	default:
 		return Config{}, fmt.Errorf("config: AURA_SEED must be auto or off, got %q", seed)
+	}
+	cfg.IngestToken = getenv("AURA_INGEST_TOKEN", "")
+	if cfg.IngestToken == "" && cfg.Seed {
+		cfg.IngestToken = DemoIngestToken
 	}
 	return cfg, nil
 }

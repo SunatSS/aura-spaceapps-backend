@@ -29,10 +29,31 @@ import (
 
 const (
 	day             = 24 * time.Hour
-	windowDays      = 30  // days of readings
-	missionDayToday = 210 // mission day of the last window day
-	landingDay      = 12  // window day index (0-based) of the landing → mission day 193
+	windowDays      = 30             // days of readings
+	missionDayToday = 210            // mission day of the last window day
+	landingDay      = 12             // window day index (0-based) of the landing → mission day 193
+	missionDays     = 900            // planned duration: transit, ~500 sols on the surface, return
+	co2EpisodeDay   = windowDays - 4 // habitat CO₂ scrubber degrades → same nights as Amina's short sleep
 )
+
+// Habitat modules, in display order.
+var modules = []struct{ code, name string }{
+	{"hab", "Habitat"},
+	{"lab", "Laboratory"},
+	{"airlock", "Airlock"},
+}
+
+// headache is the daily check-in score (1 none … 5 severe): Amina, sleeping
+// in the habitat during the CO₂ episode, reports a moderate headache.
+func headache(idx, w int) float64 {
+	switch {
+	case idx == rahimova && w >= windowDays-3:
+		return 3
+	case idx == ferreira && w >= windowDays-2, w%9 == 4:
+		return 2
+	}
+	return 1
+}
 
 // Demo cast indices.
 const (
@@ -57,17 +78,18 @@ type values struct {
 type member struct {
 	name   string
 	role   domain.Role
+	module string // where they are now
 	base   values
 	adjust func(w int, v *values) // scenario on top of baseline + noise
 }
 
 var crew = []member{
 	morgan: {
-		name: "Alex Morgan", role: domain.RoleCommander,
+		name: "Alex Morgan", role: domain.RoleCommander, module: "lab",
 		base: values{hr: 62, sys: 116, dia: 74, spo2: 98, temp: 36.6, glucose: 92, sleep: 7.8, mood: 4.4, stress: 1.6},
 	},
 	sato: {
-		name: "Kenji Sato", role: domain.RoleDeputyCommander,
+		name: "Kenji Sato", role: domain.RoleDeputyCommander, module: "lab",
 		base: values{hr: 68, sys: 120, dia: 77, spo2: 98, temp: 36.7, glucose: 98, sleep: 7.7, mood: 4.3, stress: 1.7},
 		adjust: func(w int, v *values) {
 			if w > landingDay { // fluid redistribution after landing: pressure creeps up
@@ -77,7 +99,7 @@ var crew = []member{
 		},
 	},
 	rahimova: {
-		name: "Amina Rahimova", role: domain.RoleCrew,
+		name: "Amina Rahimova", role: domain.RoleCrew, module: "hab",
 		base: values{hr: 66, sys: 112, dia: 72, spo2: 98, temp: 36.6, glucose: 90, sleep: 7.6, mood: 4.4, stress: 1.6},
 		adjust: func(w int, v *values) {
 			if w >= windowDays-4 { // four short nights in a row
@@ -89,7 +111,7 @@ var crew = []member{
 		},
 	},
 	ferreira: {
-		name: "Lucas Ferreira", role: domain.RoleCrew,
+		name: "Lucas Ferreira", role: domain.RoleCrew, module: "hab",
 		base: values{hr: 64, sys: 118, dia: 76, spo2: 98, temp: 36.7, glucose: 95, sleep: 7.8, mood: 4.4, stress: 1.6},
 		adjust: func(w int, v *values) {
 			if w == windowDays-1 { // morning after the EVA: oxygen still low
@@ -148,9 +170,11 @@ func (g *generator) run(ctx context.Context, q storage.Queries) error {
 	missionStart := today.Add(-(missionDayToday - 1) * day)
 	landingAt := windowStart.Add(landingDay*day + 14*time.Hour)
 
+	plannedEnd := missionStart.Add(missionDays * day)
 	mission := domain.Mission{
-		Name:      "Mars Expedition MX-1",
-		StartedAt: missionStart,
+		Name:         "Mars Expedition MX-1",
+		StartedAt:    missionStart,
+		PlannedEndAt: &plannedEnd,
 		Phases: []domain.Phase{
 			{Name: "Earth–Mars transit", Environment: domain.EnvMarsTransit, StartsAt: missionStart, EndsAt: &landingAt},
 			{Name: "Mars surface operations", Environment: domain.EnvMarsSurface, StartsAt: landingAt},
@@ -159,13 +183,19 @@ func (g *generator) run(ctx context.Context, q storage.Queries) error {
 	if err := q.CreateMission(ctx, &mission); err != nil {
 		return err
 	}
+	for i, m := range modules {
+		mod := domain.Module{MissionID: mission.ID, Code: m.code, Name: m.name}
+		if err := q.CreateModule(ctx, &mod, i); err != nil {
+			return err
+		}
+	}
 	surgeon := domain.Astronaut{MissionID: mission.ID, Name: flightSurgeon, Role: domain.RoleFlightSurgeon}
 	if err := account(ctx, q, &surgeon); err != nil {
 		return err
 	}
 
 	for idx, mem := range crew {
-		a := domain.Astronaut{MissionID: mission.ID, Name: mem.name, Role: mem.role}
+		a := domain.Astronaut{MissionID: mission.ID, Name: mem.name, Role: mem.role, Module: mem.module}
 		if err := account(ctx, q, &a); err != nil {
 			return err
 		}
@@ -216,6 +246,7 @@ func (g *generator) run(ctx context.Context, q storage.Queries) error {
 			add("sleep_hours", v.sleep, checkin, domain.SourceQuestionnaire, "", nil)
 			add("mood", v.mood, checkin, domain.SourceQuestionnaire, "", nil)
 			add("stress", v.stress, checkin, domain.SourceQuestionnaire, "", nil)
+			add("headache", headache(idx, w), checkin, domain.SourceQuestionnaire, "", nil)
 
 			evening := date.Add(21 * time.Hour)
 			eveningHR := v.hr + 4 + g.rnd.NormFloat64()*3
@@ -255,7 +286,10 @@ func (g *generator) run(ctx context.Context, q storage.Queries) error {
 			return err
 		}
 	}
-	return nil
+	if err := g.telemetry(ctx, q, mission, windowStart, landingAt); err != nil {
+		return err
+	}
+	return g.supplies(ctx, q, mission)
 }
 
 // noisy adds day-to-day variation to a baseline.

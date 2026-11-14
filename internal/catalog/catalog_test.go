@@ -12,8 +12,20 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("embedded catalog: %v", err)
 	}
-	if len(c.Indicators) != 9 {
-		t.Errorf("P0 catalog should have 9 indicators, got %d", len(c.Indicators))
+	if len(c.Indicators) != 10 {
+		t.Errorf("catalog should have 10 indicators (9 P0 + headache check-in), got %d", len(c.Indicators))
+	}
+	if len(c.VehicleParameters) != 6 {
+		t.Errorf("catalog should have 6 vehicle parameters, got %d", len(c.VehicleParameters))
+	}
+	if p, ok := c.VehicleParameter("ppco2"); !ok || p.Thresholds.Classify(3.8) != "caution" || p.Thresholds.Classify(2.5) != "nominal" || p.Thresholds.Classify(6) != "critical" {
+		t.Errorf("ppco2 bands: %+v", p.Thresholds)
+	}
+	if ind, _ := c.Indicator("glucose"); len(ind.Guidance.Critical.Supplies) == 0 {
+		t.Error("glucose advice should point to supplies (FR-93)")
+	}
+	if r, _ := c.Rule("post_eva_hypoxia"); len(r.Supplies) == 0 {
+		t.Error("post-EVA hypoxia rule should point to oxygen supplies")
 	}
 	for _, id := range []string{"repeated_critical", "sleep_debt", "post_eva_hypoxia", "low_mood_streak"} {
 		if _, ok := c.Rule(id); !ok {

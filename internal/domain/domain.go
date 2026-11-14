@@ -84,10 +84,11 @@ const (
 )
 
 type Mission struct {
-	ID        int64     `json:"id"`
-	Name      string    `json:"name"`
-	StartedAt time.Time `json:"startedAt"`
-	Phases    []Phase   `json:"phases"`
+	ID           int64      `json:"id"`
+	Name         string     `json:"name"`
+	StartedAt    time.Time  `json:"startedAt"`
+	PlannedEndAt *time.Time `json:"plannedEndAt"` // nil = open-ended
+	Phases       []Phase    `json:"phases"`
 }
 
 // Phase is a period of a mission spent in one environment.
@@ -135,6 +136,7 @@ type Astronaut struct {
 	MissionID int64  `json:"missionId"`
 	Name      string `json:"name"`
 	Role      Role   `json:"role"`
+	Module    string `json:"module"` // module code where the member is now; "" on Earth
 }
 
 type Measurement struct {
@@ -157,4 +159,68 @@ type Activity struct {
 	StartsAt    time.Time  `json:"startsAt"`
 	EndsAt      *time.Time `json:"endsAt"`
 	Note        string     `json:"note"`
+}
+
+// Module is a pressurized habitat module with its own environment sensors.
+type Module struct {
+	ID        int64  `json:"-"`
+	MissionID int64  `json:"-"`
+	Code      string `json:"code"`
+	Name      string `json:"name"`
+}
+
+// Telemetry is one environment reading from an onboard sensor (FR-16).
+type Telemetry struct {
+	ID         int64     `json:"-"`
+	MissionID  int64     `json:"-"`
+	Module     string    `json:"module"`
+	Parameter  string    `json:"parameter"`
+	Value      float64   `json:"value"`
+	Unit       string    `json:"unit"`
+	MeasuredAt time.Time `json:"measuredAt"`
+	Source     string    `json:"source"`
+}
+
+// Supply categories.
+const (
+	SupplyMedication = "medication"
+	SupplyConsumable = "consumable"
+	SupplyEquipment  = "equipment"
+	SupplyOxygen     = "oxygen"
+)
+
+// Supply transaction kinds.
+const (
+	SupplyUse     = "use"
+	SupplyCount   = "count"
+	SupplyDispose = "dispose"
+)
+
+// Supply is one stocked item of the medical kit (FR-90).
+type Supply struct {
+	ID            int64      `json:"id"`
+	MissionID     int64      `json:"-"`
+	Code          string     `json:"code"`
+	Name          string     `json:"name"`
+	Category      string     `json:"category"`
+	Unit          string     `json:"unit"`
+	Quantity      float64    `json:"quantity"`
+	MinQuantity   float64    `json:"minQuantity"`
+	Location      string     `json:"location"`
+	ExpiresAt     *time.Time `json:"expiresAt"`
+	LastCountedAt *time.Time `json:"lastCountedAt"`
+	Discrepancy   float64    `json:"discrepancy"` // counted minus expected at the last count
+}
+
+// SupplyTransaction is a journal entry (FR-92).
+type SupplyTransaction struct {
+	ID               int64     `json:"id"`
+	SupplyID         int64     `json:"supplyId"`
+	AstronautID      *int64    `json:"astronautId"`
+	Kind             string    `json:"kind"`
+	Delta            float64   `json:"delta"`
+	QuantityAfter    float64   `json:"quantityAfter"`
+	Reason           string    `json:"reason"`
+	RecommendationID string    `json:"recommendationId"`
+	CreatedAt        time.Time `json:"createdAt"`
 }

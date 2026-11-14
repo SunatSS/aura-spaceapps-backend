@@ -1,12 +1,14 @@
 package guidance
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"aura/internal/catalog"
 	"aura/internal/domain"
 	"aura/internal/readiness"
+	"aura/internal/vehicle"
 )
 
 var now = time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)
@@ -205,5 +207,56 @@ func TestEvaluate(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCabinAirAndSupplies(t *testing.T) {
+	cat, err := catalog.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := now.Add(-200 * 24 * time.Hour)
+	mission := domain.Mission{StartedAt: start, Phases: []domain.Phase{{Environment: domain.EnvMarsSurface, StartsAt: start}}}
+	readings := []domain.Measurement{
+		{Indicator: "spo2", Value: 93, MeasuredAt: now.Add(-time.Hour)},
+		{Indicator: "headache", Value: 3, MeasuredAt: now.Add(-time.Hour)},
+		{Indicator: "glucose", Value: 50, MeasuredAt: now.Add(-time.Hour)},
+	}
+	latest := map[string]domain.Measurement{}
+	for _, m := range readings {
+		latest[m.Indicator] = m
+	}
+	co2, o2 := 3.8, 21.2
+	cabin := &vehicle.ModuleResult{Code: "hab", Name: "Habitat", Parameters: []vehicle.ParameterResult{
+		{Code: "ppco2", Status: domain.StatusCaution, Fresh: true, Value: &co2, Unit: "mmHg"},
+		{Code: "ppo2", Status: domain.StatusNominal, Fresh: true, Value: &o2, Unit: "kPa"},
+	}}
+	a := readiness.Assess(readiness.Input{Catalog: cat, Mission: mission, Latest: latest, Now: now})
+	recs := Evaluate(Input{Catalog: cat, Mission: mission, Assessment: a, History: readings, Cabin: cabin, Now: now})
+
+	byID := map[string]Recommendation{}
+	for _, r := range recs {
+		byID[r.ID] = r
+	}
+	air, ok := byID["cabin_air:ppco2"]
+	if !ok || air.Severity != domain.StatusCaution || air.Parameter != "ppco2" || air.Basis != "Habitat: ppCO₂ 3.8 mmHg (nominal ≤ 3)." {
+		t.Errorf("cabin_air = %+v", air)
+	}
+	if _, ok := byID["cabin_air:ppo2"]; ok {
+		t.Error("nominal ppO₂ must not produce advice")
+	}
+	const note = " Cabin air in Habitat: ppCO₂ 3.8 mmHg, ppO₂ 21.2 kPa."
+	for _, id := range []string{"indicator_status:spo2", "indicator_status:headache"} {
+		if r := byID[id]; !strings.HasSuffix(r.Basis, note) {
+			t.Errorf("%s basis = %q, want cabin context", id, r.Basis)
+		}
+	}
+	if g := byID["indicator_status:glucose"]; len(g.Supplies) == 0 || g.Supplies[0].Code != "glucose_gel" || strings.Contains(g.Basis, "Cabin air") {
+		t.Errorf("glucose = %+v", g)
+	}
+	for _, r := range recs {
+		if r.Supplies == nil || r.Risks == nil {
+			t.Errorf("%s: nil slices in JSON", r.ID)
+		}
 	}
 }

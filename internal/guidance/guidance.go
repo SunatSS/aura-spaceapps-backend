@@ -11,11 +11,13 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"aura/internal/catalog"
 	"aura/internal/domain"
 	"aura/internal/readiness"
+	"aura/internal/vehicle"
 )
 
 // Rule IDs.
@@ -25,6 +27,7 @@ const (
 	RuleSleepDebt        = "sleep_debt"
 	RulePostEVAHypoxia   = "post_eva_hypoxia"
 	RuleLowMoodStreak    = "low_mood_streak"
+	RuleCabinAir         = "cabin_air"
 )
 
 // Rule parameters.
@@ -49,13 +52,35 @@ type Recommendation struct {
 	Escalate       bool          `json:"escalate"`
 	EscalateReason string        `json:"escalateReason"`
 	Risks          []string      `json:"risks"`
+	Parameter      string        `json:"parameter"` // vehicle parameter for cabin_air, else ""
+	Supplies       []SupplyRef   `json:"supplies"`  // what the action needs from the med kit (FR-93)
+}
+
+// SupplyRef points to a medical supply. Guidance fills Code from the catalog;
+// the HTTP layer adds stock and location from the mission's inventory.
+type SupplyRef struct {
+	Code     string        `json:"code"`
+	Name     string        `json:"name"`
+	Quantity float64       `json:"quantity"`
+	Unit     string        `json:"unit"`
+	Location string        `json:"location"`
+	Status   domain.Status `json:"status"`
+}
+
+func refs(codes []string) []SupplyRef {
+	out := make([]SupplyRef, 0, len(codes))
+	for _, c := range codes {
+		out = append(out, SupplyRef{Code: c})
+	}
+	return out
 }
 
 type Input struct {
 	Catalog    *catalog.Catalog
 	Mission    domain.Mission
 	Assessment readiness.Result
-	History    []domain.Measurement // recent readings (e.g. last 7 days), any order
+	History    []domain.Measurement  // recent readings (e.g. last 7 days), any order
+	Cabin      *vehicle.ModuleResult // the module the astronaut is in, if known (FR-83)
 	Now        time.Time
 }
 
@@ -78,6 +103,8 @@ func Evaluate(in Input) []Recommendation {
 	e.sleepDebt()
 	e.lowMoodStreak()
 	e.indicatorStatus()
+	e.cabinAir()
+	e.addCabinContext()
 
 	slices.SortStableFunc(e.out, func(a, b Recommendation) int {
 		if c := cmp.Compare(b.Severity.Severity(), a.Severity.Severity()); c != 0 {
@@ -87,6 +114,14 @@ func Evaluate(in Input) []Recommendation {
 	})
 	if e.out == nil {
 		return []Recommendation{}
+	}
+	for i := range e.out {
+		if e.out[i].Supplies == nil {
+			e.out[i].Supplies = []SupplyRef{}
+		}
+		if e.out[i].Risks == nil {
+			e.out[i].Risks = []string{}
+		}
 	}
 	return e.out
 }
@@ -112,7 +147,7 @@ func (e *evaluator) fromRule(ruleID, code string, severity domain.Status, basis 
 	r := Recommendation{
 		ID: ruleID + ":" + code, Rule: ruleID, Indicator: code, System: ind.System,
 		Severity: severity, Title: rule.Title, Action: rule.Action, Basis: basis,
-		RecheckMinutes: rule.RecheckMinutes, Escalate: escalate, Risks: ind.Risks,
+		RecheckMinutes: rule.RecheckMinutes, Escalate: escalate, Risks: ind.Risks, Supplies: refs(rule.Supplies),
 	}
 	if escalate {
 		r.EscalateReason = rule.EscalateReason
@@ -227,7 +262,7 @@ func (e *evaluator) indicatorStatus() {
 			ID: RuleIndicatorStatus + ":" + ind.Code, Rule: RuleIndicatorStatus, Indicator: ind.Code, System: ind.System,
 			Severity: ir.Status, Title: advice.Title, Action: advice.Action,
 			Basis:          fmt.Sprintf("%s: %s (nominal %s).", ind.Name, ind.FormatValue(*ir.Value), thr.Nominal),
-			RecheckMinutes: advice.RecheckMinutes, Risks: ind.Risks,
+			RecheckMinutes: advice.RecheckMinutes, Risks: ind.Risks, Supplies: refs(advice.Supplies),
 		}
 		if advice.Escalate {
 			r.Escalate = true
@@ -278,6 +313,62 @@ func (e *evaluator) mergeBloodPressure() {
 	}
 	e.out[keep] = base
 	e.out = slices.Delete(e.out, drop, drop+1)
+}
+
+// cabinAir: a life-support parameter off-nominal in the astronaut's module
+// concerns everyone in it (FR-83).
+func (e *evaluator) cabinAir() {
+	c := e.in.Cabin
+	if c == nil {
+		return
+	}
+	for _, pr := range c.Parameters {
+		if !pr.Fresh || (pr.Status != domain.StatusCaution && pr.Status != domain.StatusCritical) {
+			continue
+		}
+		p, ok := e.in.Catalog.VehicleParameter(pr.Code)
+		if !ok {
+			continue
+		}
+		advice := p.Guidance.Caution
+		if pr.Status == domain.StatusCritical {
+			advice = p.Guidance.Critical
+		}
+		e.out = append(e.out, Recommendation{
+			ID: RuleCabinAir + ":" + p.Code, Rule: RuleCabinAir, Parameter: p.Code, System: p.System,
+			Severity: pr.Status, Title: advice.Title, Action: advice.Action, RecheckMinutes: advice.RecheckMinutes,
+			Basis: fmt.Sprintf("%s: %s %s (nominal %s).", c.Name, p.ShortName, p.FormatValue(*pr.Value), p.Thresholds.Nominal),
+			Risks: []string{}, Supplies: refs(advice.Supplies),
+		})
+	}
+}
+
+// addCabinContext adds the module's CO₂ and O₂ to advice about low blood
+// oxygen or headache, so the cause can be ruled in or out (FR-83).
+func (e *evaluator) addCabinContext() {
+	c := e.in.Cabin
+	if c == nil {
+		return
+	}
+	var parts []string
+	for _, code := range []string{"ppco2", "ppo2"} {
+		for _, pr := range c.Parameters {
+			if pr.Code != code || !pr.Fresh {
+				continue
+			}
+			p, _ := e.in.Catalog.VehicleParameter(code)
+			parts = append(parts, p.ShortName+" "+p.FormatValue(*pr.Value))
+		}
+	}
+	if len(parts) == 0 {
+		return
+	}
+	note := fmt.Sprintf(" Cabin air in %s: %s.", c.Name, strings.Join(parts, ", "))
+	for i, r := range e.out {
+		if r.Indicator == "spo2" || r.Indicator == "headache" {
+			e.out[i].Basis += note
+		}
+	}
 }
 
 func describeLevel(code string) string {

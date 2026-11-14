@@ -120,21 +120,26 @@ type guidanceResponse struct {
 }
 
 func (h *handlers) guidance(w http.ResponseWriter, r *http.Request) {
-	as, ok := h.assess(w, r)
+	a, ok := h.loadAstronaut(w, r)
 	if !ok {
 		return
 	}
-	history, err := h.deps.DB.Q().ListMeasurements(r.Context(), storage.MeasurementFilter{
-		AstronautID: as.astronaut.ID, From: as.now.Add(-guidanceHistory),
-	})
-	if err != nil {
-		h.internal(w, "guidance history", err)
+	m, ok := h.loadMission(w, r)
+	if !ok {
 		return
 	}
-	recs := guidance.Evaluate(guidance.Input{
-		Catalog: h.deps.Catalog, Mission: as.mission, Assessment: as.result, History: history, Now: as.now,
-	})
-	resp := guidanceResponse{AstronautID: as.astronaut.ID, Environment: as.mission.EnvironmentAt(as.now), Recommendations: recs}
+	now := h.deps.Now().UTC()
+	st, err := h.missionState(r.Context(), m, now)
+	if err != nil {
+		h.internal(w, "guidance", err)
+		return
+	}
+	ev, err := h.evaluate(r.Context(), a, m, now, st)
+	if err != nil {
+		h.internal(w, "guidance", err)
+		return
+	}
+	resp := guidanceResponse{AstronautID: a.ID, Environment: m.EnvironmentAt(now), Recommendations: ev.recs}
 	if env, ok := h.deps.Catalog.Environment(resp.Environment); ok {
 		resp.CommDelayMinS, resp.CommDelayMaxS = env.CommDelayMinS, env.CommDelayMaxS
 	}

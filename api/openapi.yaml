@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: AURA API
-  version: 0.3.0
+  version: 0.4.0
   description: |
     Astronaut Universal Readiness Assessment — health monitoring API.
     Source of truth for the backend/frontend contract. The frontend generates
@@ -300,8 +300,175 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
+  /ingest:
+    post:
+      operationId: ingest
+      summary: Batch of readings from onboard systems — environment sensors, dosimeters, wearables (FR-16)
+      description: Authenticated with a bearer token (AURA_INGEST_TOKEN), not a session. Everything is stored with source = device.
+      security: [{ ingestToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IngestRequest" }
+      responses:
+        "202":
+          description: Accepted counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [telemetry, measurements]
+                properties:
+                  telemetry: { type: integer }
+                  measurements: { type: integer }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /vehicle:
+    get:
+      operationId: getVehicle
+      summary: Life support per module with statuses (FR-80, FR-81)
+      responses:
+        "200":
+          description: Every module, its parameters and who is in it
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Vehicle" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /vehicle/telemetry:
+    get:
+      operationId: listTelemetry
+      summary: Parameter history for charts; last 7 days by default (FR-84)
+      parameters:
+        - { name: module, in: query, schema: { type: string } }
+        - { name: parameter, in: query, schema: { type: string } }
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+      responses:
+        "200":
+          description: Readings in chronological order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [telemetry]
+                properties:
+                  telemetry: { type: array, items: { $ref: "#/components/schemas/TelemetryView" } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /supplies:
+    get:
+      operationId: listSupplies
+      summary: Medical kit with statuses and usage forecast (FR-90, FR-91, FR-94)
+      responses:
+        "200":
+          description: Every item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Supplies" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /supplies/journal:
+    get:
+      operationId: getSupplyJournal
+      summary: Who took what, when and why — newest first, last 50 (FR-92)
+      parameters:
+        - { name: supplyId, in: query, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: Journal entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [entries]
+                properties:
+                  entries: { type: array, items: { $ref: "#/components/schemas/JournalEntry" } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /supplies/{id}/use:
+    parameters:
+      - $ref: "#/components/parameters/SupplyId"
+    post:
+      operationId: useSupply
+      summary: Take an item from the kit (crew on board only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity, reason]
+              additionalProperties: false
+              properties:
+                quantity: { type: number, exclusiveMinimum: 0 }
+                reason: { type: string }
+                recommendationId: { type: string, description: The recommendation that asked for it }
+      responses:
+        "200":
+          description: The item after the change
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplyItem" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /supplies/{id}/count:
+    parameters:
+      - $ref: "#/components/parameters/SupplyId"
+    post:
+      operationId: countSupply
+      summary: Record an inventory count; a mismatch is kept as a discrepancy (FR-95)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity]
+              additionalProperties: false
+              properties:
+                quantity: { type: number, minimum: 0 }
+      responses:
+        "200":
+          description: The item after the count
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplyItem" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /supplies/{id}/dispose:
+    parameters:
+      - $ref: "#/components/parameters/SupplyId"
+    post:
+      operationId: disposeSupply
+      summary: Write off an expired item (irreversible; the UI confirms first, FR-96)
+      responses:
+        "200":
+          description: The item after disposal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupplyItem" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
 components:
   securitySchemes:
+    ingestToken:
+      type: http
+      scheme: bearer
     session:
       type: apiKey
       in: cookie
@@ -316,6 +483,11 @@ components:
       name: from
       in: query
       schema: { type: string, format: date-time }
+    SupplyId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
     To:
       name: to
       in: query
@@ -357,7 +529,7 @@ components:
     # --- catalog ---------------------------------------------------------------
     Catalog:
       type: object
-      required: [disclaimer, thresholdsNote, hazards, risks, environments, systems, indicators]
+      required: [disclaimer, thresholdsNote, hazards, risks, environments, systems, indicators, vehicleParameters]
       properties:
         disclaimer: { type: string }
         thresholdsNote: { type: string, description: Ranges are illustrative — show next to thresholds }
@@ -366,6 +538,29 @@ components:
         environments: { type: array, items: { $ref: "#/components/schemas/Environment" } }
         systems: { type: array, items: { $ref: "#/components/schemas/BodySystem" } }
         indicators: { type: array, items: { $ref: "#/components/schemas/Indicator" } }
+        vehicleParameters: { type: array, items: { $ref: "#/components/schemas/VehicleParameter" } }
+
+    VehicleParameter:
+      type: object
+      required: [code, name, shortName, unit, system, min, max, step, freshnessMinutes, thresholds, about, guidance]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        shortName: { type: string }
+        unit: { type: string }
+        system: { type: string, description: Body system it affects most }
+        min: { type: number }
+        max: { type: number }
+        step: { type: number }
+        freshnessMinutes: { type: integer }
+        thresholds: { $ref: "#/components/schemas/Thresholds" }
+        about: { type: string }
+        guidance:
+          type: object
+          required: [caution, critical]
+          properties:
+            caution: { $ref: "#/components/schemas/Advice" }
+            critical: { $ref: "#/components/schemas/Advice" }
 
     Hazard:
       type: object
@@ -424,12 +619,13 @@ components:
 
     Advice:
       type: object
-      required: [title, action, recheckMinutes, escalate]
+      required: [title, action, recheckMinutes, escalate, supplies]
       properties:
         title: { type: string }
         action: { type: string }
         recheckMinutes: { type: integer }
         escalate: { type: boolean }
+        supplies: { type: [array, "null"], items: { type: string }, description: Codes of medical supplies the action needs }
 
     Indicator:
       type: object
@@ -482,11 +678,12 @@ components:
 
     CurrentMission:
       type: object
-      required: [id, name, startedAt, phases, missionDay, currentPhase, environment, now]
+      required: [id, name, startedAt, plannedEndAt, phases, missionDay, currentPhase, environment, now]
       properties:
         id: { type: integer, format: int64 }
         name: { type: string }
         startedAt: { type: string, format: date-time }
+        plannedEndAt: { type: [string, "null"], format: date-time }
         phases: { type: array, items: { $ref: "#/components/schemas/Phase" } }
         missionDay: { type: integer, description: 1-based "Mission Day N" }
         currentPhase:
@@ -501,12 +698,13 @@ components:
 
     Astronaut:
       type: object
-      required: [id, missionId, name, role]
+      required: [id, missionId, name, role, module]
       properties:
         id: { type: integer, format: int64 }
         missionId: { type: integer, format: int64 }
         name: { type: string }
         role: { $ref: "#/components/schemas/Role" }
+        module: { type: string, description: Code of the module the member is in now; empty on Earth }
 
     # --- measurements ----------------------------------------------------------------
     MeasurementView:
@@ -537,6 +735,7 @@ components:
         measuredAt: { type: string, format: date-time, description: Defaults to now }
         context: { type: string, enum: ["", pre_eva, post_eva] }
         note: { type: string }
+        source: { type: string, enum: ["", device], description: device when read from a sensor; self-report answers cannot be device }
 
     CreateMeasurementsRequest:
       type: object
@@ -599,10 +798,10 @@ components:
 
     Recommendation:
       type: object
-      required: [id, rule, indicator, system, severity, title, action, basis, recheckMinutes, escalate, escalateReason, risks]
+      required: [id, rule, indicator, system, severity, title, action, basis, recheckMinutes, escalate, escalateReason, risks, parameter, supplies]
       properties:
         id: { type: string }
-        rule: { type: string, enum: [indicator_status, repeated_critical, sleep_debt, post_eva_hypoxia, low_mood_streak] }
+        rule: { type: string, enum: [indicator_status, repeated_critical, sleep_debt, post_eva_hypoxia, low_mood_streak, cabin_air] }
         indicator: { type: string }
         system: { type: string }
         severity: { $ref: "#/components/schemas/Status" }
@@ -613,6 +812,8 @@ components:
         escalate: { type: boolean, description: Report to the flight surgeon }
         escalateReason: { type: string }
         risks: { type: array, items: { type: string }, description: NASA HRP risk codes }
+        parameter: { type: string, description: Vehicle parameter for cabin_air advice; empty otherwise }
+        supplies: { type: array, items: { $ref: "#/components/schemas/SupplyRef" }, description: What the action needs from the medical kit, with stock and location }
 
     Guidance:
       type: object
@@ -704,7 +905,7 @@ components:
 
     Report:
       type: object
-      required: [generatedAt, mission, astronaut, readiness, escalate, alerts, stale, recommendations, trends, disclaimer]
+      required: [generatedAt, mission, astronaut, readiness, escalate, alerts, stale, recommendations, trends, cabin, disclaimer]
       properties:
         generatedAt: { type: string, format: date-time }
         mission:
@@ -771,4 +972,162 @@ components:
               last: { type: [number, "null"] }
               change: { type: [number, "null"], description: Last minus first reading in the window }
               offNominal: { type: integer }
+        cabin:
+          description: Air in the member's module now and over 7 days; null when not in a module
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [module, name, parameters]
+              properties:
+                module: { type: string }
+                name: { type: string }
+                parameters:
+                  type: array
+                  items:
+                    type: object
+                    required: [parameter, name, unit, nominal, status, value, min, max, offNominal]
+                    properties:
+                      parameter: { type: string }
+                      name: { type: string }
+                      unit: { type: string }
+                      nominal: { type: string }
+                      status: { $ref: "#/components/schemas/Status" }
+                      value: { type: [number, "null"] }
+                      min: { type: [number, "null"] }
+                      max: { type: [number, "null"] }
+                      offNominal: { type: integer }
         disclaimer: { type: string }
+
+    # --- vehicle and supplies (P2) ---------------------------------------------------
+    IngestRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        telemetry:
+          type: array
+          items:
+            type: object
+            required: [module, parameter, value]
+            additionalProperties: false
+            properties:
+              module: { type: string }
+              parameter: { type: string }
+              value: { type: number }
+              measuredAt: { type: string, format: date-time, description: Defaults to now }
+        measurements:
+          type: array
+          items:
+            type: object
+            required: [astronautId, indicator, value]
+            additionalProperties: false
+            properties:
+              astronautId: { type: integer, format: int64 }
+              indicator: { type: string, description: Sensor indicators only (no self-report scales) }
+              value: { type: number }
+              measuredAt: { type: string, format: date-time }
+
+    VehicleParameterResult:
+      type: object
+      required: [code, status, fresh, value, unit, measuredAt]
+      properties:
+        code: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+        fresh: { type: boolean }
+        value: { type: [number, "null"] }
+        unit: { type: string }
+        measuredAt: { type: [string, "null"], format: date-time }
+
+    VehicleModule:
+      type: object
+      required: [code, name, status, crew, parameters]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+        crew:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: integer, format: int64 }
+              name: { type: string }
+        parameters: { type: array, items: { $ref: "#/components/schemas/VehicleParameterResult" } }
+
+    Vehicle:
+      type: object
+      required: [status, modules, assessedAt]
+      properties:
+        status: { $ref: "#/components/schemas/Status" }
+        modules: { type: array, items: { $ref: "#/components/schemas/VehicleModule" } }
+        assessedAt: { type: string, format: date-time }
+
+    TelemetryView:
+      type: object
+      required: [module, parameter, value, unit, measuredAt, source, status]
+      properties:
+        module: { type: string }
+        parameter: { type: string }
+        value: { type: number }
+        unit: { type: string }
+        measuredAt: { type: string, format: date-time }
+        source: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+
+    SupplyRef:
+      type: object
+      required: [code, name, quantity, unit, location, status]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        quantity: { type: number }
+        unit: { type: string }
+        location: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+
+    SupplyItem:
+      type: object
+      required: [id, code, name, category, unit, quantity, minQuantity, location, expiresAt, lastCountedAt, discrepancy, status, advisory, reasons, dailyUse, runsOutAt, lastsMission]
+      properties:
+        id: { type: integer, format: int64 }
+        code: { type: string }
+        name: { type: string }
+        category: { type: string, enum: [medication, consumable, equipment, oxygen] }
+        unit: { type: string }
+        quantity: { type: number }
+        minQuantity: { type: number }
+        location: { type: string }
+        expiresAt: { type: [string, "null"], format: date-time }
+        lastCountedAt: { type: [string, "null"], format: date-time }
+        discrepancy: { type: number, description: Counted minus expected at the last count }
+        status: { $ref: "#/components/schemas/Status" }
+        advisory: { type: boolean, description: Inventory count due }
+        reasons: { type: array, items: { type: string } }
+        dailyUse: { type: number }
+        runsOutAt: { type: [string, "null"], format: date-time }
+        lastsMission: { type: boolean }
+
+    Supplies:
+      type: object
+      required: [items, missionEndAt, assessedAt]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/SupplyItem" } }
+        missionEndAt: { type: [string, "null"], format: date-time }
+        assessedAt: { type: string, format: date-time }
+
+    JournalEntry:
+      type: object
+      required: [id, supplyId, astronautId, kind, delta, quantityAfter, reason, recommendationId, createdAt, supplyName, unit, astronautName]
+      properties:
+        id: { type: integer, format: int64 }
+        supplyId: { type: integer, format: int64 }
+        astronautId: { type: [integer, "null"], format: int64 }
+        kind: { type: string, enum: [use, count, dispose] }
+        delta: { type: number }
+        quantityAfter: { type: number }
+        reason: { type: string }
+        recommendationId: { type: string }
+        createdAt: { type: string, format: date-time }
+        supplyName: { type: string }
+        unit: { type: string }
+        astronautName: { type: string, description: Empty when nobody in particular }

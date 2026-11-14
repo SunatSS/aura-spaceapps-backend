@@ -51,7 +51,7 @@ func newTestEnv(t *testing.T, seeded bool, staticDir string) testEnv {
 		}
 	}
 	r := NewRouter(Deps{
-		DB: db, Catalog: cat, StaticDir: staticDir, Demo: true,
+		DB: db, Catalog: cat, StaticDir: staticDir, Demo: true, IngestToken: testIngestToken,
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Now:    func() time.Time { return testNow },
 	})

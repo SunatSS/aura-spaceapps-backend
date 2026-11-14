@@ -257,11 +257,13 @@ indicators:
         action: Rest for 15 minutes, reduce salt and caffeine today, re-measure in the evening.
         recheck_minutes: 240
         escalate: false
+        supplies: [bp_cuff]
       critical:
         title: Blood pressure is critically abnormal
         action: Stop physical work, sit down, breathe slowly and re-measure in 5 minutes.
         recheck_minutes: 5
         escalate: false
+        supplies: [bp_cuff]
 
   - code: bp_diastolic
     name: Blood pressure (diastolic)
@@ -324,11 +326,13 @@ indicators:
         action: Check the sensor placement, sit upright, breathe deeply for 2 minutes and re-measure. Check cabin CO₂ and O₂ readings.
         recheck_minutes: 10
         escalate: false
+        supplies: [pulse_oximeter]
       critical:
         title: Blood oxygen is critically low
         action: Stop activity, switch to supplemental oxygen if available, check cabin atmosphere and re-measure immediately.
         recheck_minutes: 2
         escalate: true
+        supplies: [oxygen_mask, oxygen_cylinder]
 
   - code: body_temp
     name: Body temperature
@@ -363,6 +367,7 @@ indicators:
         action: Stop work, isolate from the crew if infection is possible, start the fever protocol and re-measure in 30 minutes.
         recheck_minutes: 30
         escalate: true
+        supplies: [thermometer]
 
   - code: glucose
     name: Blood glucose
@@ -393,11 +398,13 @@ indicators:
         action: If low — eat a snack with fast carbohydrates; if high — skip sweets and drink water. Re-measure in 1 hour.
         recheck_minutes: 60
         escalate: false
+        supplies: [glucose_gel, glucose_strips]
       critical:
         title: Blood glucose is critically abnormal
         action: If low — take 15 g of fast carbohydrates now and re-measure in 15 minutes. If high — drink water and re-measure.
         recheck_minutes: 15
         escalate: true
+        supplies: [glucose_gel, glucose_strips]
 
   - code: sleep_hours
     name: Sleep last night
@@ -507,6 +514,205 @@ indicators:
         recheck_minutes: 0
         escalate: false
 
+  - code: headache
+    name: Headache
+    short_name: Headache
+    unit: score
+    system: eyes
+    input: scale
+    min: 1
+    max: 5
+    step: 1
+    freshness_hours: 24
+    hazards: [hostile_environment, gravity]
+    risks: [sans, behavioral]
+    scale_labels:
+      - {value: 1, label: None}
+      - {value: 2, label: Mild}
+      - {value: 3, label: Moderate}
+      - {value: 4, label: Strong}
+      - {value: 5, label: Severe}
+    # Self-report scale; bands chosen for the prototype. Headaches on the ISS
+    # are linked to elevated cabin CO₂ and to fluid shifts (SANS).
+    thresholds:
+      nominal: {min: 1, max: 2}
+      caution: {min: 1, max: 3}
+    about: How strong your headache is today, from 1 (none) to 5 (severe).
+    how_to_measure:
+      - Answer in the morning check-in, thinking about the last 24 hours.
+      - Note if the headache started in a particular module.
+    why_in_space: In a sealed cabin, carbon dioxide can build up where air does not mix; headache is one of its first signs. Fluid shifts toward the head add to it.
+    guidance:
+      caution:
+        title: Headache
+        action: Drink water, take a break in another module and check the cabin CO₂ reading where you work and sleep.
+        recheck_minutes: 0
+        escalate: false
+      critical:
+        title: Strong headache
+        action: Stop strenuous work, move to a module with nominal CO₂, check your vision for changes and report it at the next medical conference.
+        recheck_minutes: 60
+        escalate: true
+# --- Vehicle environment (REQUIREMENTS §5.9) ----------------------------------------
+# Life-support parameters per module. Bands are ILLUSTRATIVE, based on
+# NASA-STD-3001 Vol. 2 §6.2 (atmosphere) and ISS operating practice; flight
+# rules use more detailed limits. Thresholds: same rule as indicators.
+vehicle_parameters:
+  - code: cabin_pressure
+    name: Cabin pressure
+    short_name: Pressure
+    unit: kPa
+    system: respiratory
+    min: 0
+    max: 120
+    step: 0.1
+    freshness_minutes: 240
+    # Source: NASA-STD-3001 Vol. 2 §6.2.1 — sea-level-equivalent cabin (ISS 101.3 kPa).
+    thresholds:
+      nominal: {min: 97, max: 104}
+      caution: {min: 94, max: 106}
+    about: Total air pressure in the module.
+    guidance:
+      caution:
+        title: Cabin pressure is off-nominal
+        action: Check for leaks in the module and report the reading to the commander.
+        recheck_minutes: 30
+        escalate: false
+      critical:
+        title: Cabin pressure is critical
+        action: Follow the rapid depressurization procedure; close the hatch and move to a safe module.
+        recheck_minutes: 5
+        escalate: false
+  - code: ppo2
+    name: Oxygen partial pressure (ppO₂)
+    short_name: ppO₂
+    unit: kPa
+    system: respiratory
+    min: 0
+    max: 50
+    step: 0.1
+    freshness_minutes: 240
+    # Source: NASA-STD-3001 Vol. 2 §6.2.1 — ppO₂ 19.5–23.1 kPa (2.83–3.35 psia) at sea-level pressure.
+    thresholds:
+      nominal: {min: 19.5, max: 23.1}
+      caution: {min: 18.0, max: 25.0}
+    about: How much oxygen there is to breathe. Too low causes hypoxia; too high raises the fire risk.
+    guidance:
+      caution:
+        title: Oxygen level in the module is off-nominal
+        action: Check the oxygen generator and ventilation; avoid strenuous work in this module until ppO₂ is nominal.
+        recheck_minutes: 30
+        escalate: false
+        supplies: [oxygen_mask]
+      critical:
+        title: Oxygen level in the module is critical
+        action: Leave the module or put on an oxygen mask; report to the commander now.
+        recheck_minutes: 5
+        escalate: false
+        supplies: [oxygen_mask, oxygen_cylinder]
+  - code: ppco2
+    name: Carbon dioxide (ppCO₂)
+    short_name: ppCO₂
+    unit: mmHg
+    system: respiratory
+    min: 0
+    max: 30
+    step: 0.1
+    freshness_minutes: 240
+    # Source: NASA-STD-3001 Vol. 2 §6.2.1.2 — ppCO₂ ≤ 3 mmHg (24-h average); ISS
+    # experience links 3–5 mmHg to headaches. Caution band is illustrative.
+    thresholds:
+      nominal: {min: null, max: 3.0}
+      caution: {min: null, max: 5.3}
+    about: Exhaled CO₂ removed by the scrubbers. Pockets of CO₂ build up where air does not mix and cause headaches, poor sleep and slow thinking.
+    guidance:
+      caution:
+        title: CO₂ is elevated in your module
+        action: Check the CO₂ scrubber and fans in this module, improve air mixing, and sleep or work in another module until ppCO₂ is under 3 mmHg.
+        recheck_minutes: 60
+        escalate: false
+      critical:
+        title: CO₂ is critically high in your module
+        action: Leave the module now, switch the scrubber to backup and report to the commander.
+        recheck_minutes: 10
+        escalate: false
+  - code: cabin_temp
+    name: Air temperature
+    short_name: Temperature
+    unit: °C
+    system: immune
+    min: -20
+    max: 60
+    step: 0.1
+    freshness_minutes: 240
+    # Source: NASA-STD-3001 Vol. 2 §6.2.3 — habitable temperature 18–27 °C.
+    thresholds:
+      nominal: {min: 18, max: 27}
+      caution: {min: 16, max: 29}
+    about: Air temperature in the module.
+    guidance:
+      caution:
+        title: Module temperature is off-nominal
+        action: Adjust the thermal control setpoint and dress for the temperature.
+        recheck_minutes: 60
+        escalate: false
+      critical:
+        title: Module temperature is critical
+        action: Move to another module and report the thermal control fault.
+        recheck_minutes: 15
+        escalate: false
+  - code: humidity
+    name: Relative humidity
+    short_name: Humidity
+    unit: '%RH'
+    system: immune
+    min: 0
+    max: 100
+    step: 1
+    freshness_minutes: 240
+    # Source: NASA-STD-3001 Vol. 2 §6.2.4 — relative humidity 25–75 %.
+    thresholds:
+      nominal: {min: 25, max: 75}
+      caution: {min: 20, max: 80}
+    about: Moisture in the air. Too dry irritates eyes and airways; too humid lets microbes and condensation grow.
+    guidance:
+      caution:
+        title: Humidity is off-nominal
+        action: Check the condensing heat exchanger; wipe condensation and drink more water if the air is dry.
+        recheck_minutes: 120
+        escalate: false
+      critical:
+        title: Humidity is critical
+        action: Report the humidity control fault; protect electronics from condensation.
+        recheck_minutes: 30
+        escalate: false
+  - code: dose_rate
+    name: Radiation dose rate
+    short_name: Dose rate
+    unit: µGy/h
+    system: immune
+    min: 0
+    max: 100000
+    step: 0.1
+    freshness_minutes: 240
+    # Illustrative: MSL RAD measured ~9 µGy/h on the Mars surface and ~20 µGy/h
+    # in transit; solar particle events raise it by orders of magnitude.
+    thresholds:
+      nominal: {min: null, max: 30}
+      caution: {min: null, max: 100}
+    about: Radiation measured by the module dosimeter. Galactic cosmic rays give a steady dose; solar particle events cause sudden spikes.
+    guidance:
+      caution:
+        title: Radiation is above background
+        action: Limit time in this module and postpone EVAs until the dose rate is back to background.
+        recheck_minutes: 30
+        escalate: false
+      critical:
+        title: Possible solar particle event
+        action: Go to the storm shelter now and stay there until the commander gives the all-clear.
+        recheck_minutes: 10
+        escalate: false
+
 # --- Rule texts used by internal/guidance ------------------------------------------
 rules:
   - id: repeated_critical
@@ -519,11 +725,13 @@ rules:
     action: Shift non-critical tasks, protect the next sleep period, darken the crew quarters and avoid caffeine after midday.
     recheck_minutes: 0
     escalate_reason: Three or more nights in a row with less than 6 hours of sleep.
+    supplies: [sleep_kit]
   - id: post_eva_hypoxia
     title: Low blood oxygen after a spacewalk
     action: Rest on cabin air, check for decompression symptoms (joint pain, tingling, headache) and re-measure SpO₂ every 15 minutes.
     recheck_minutes: 15
     escalate_reason: Blood oxygen stayed below normal after a spacewalk (hypoxia / decompression risk).
+    supplies: [oxygen_mask, oxygen_cylinder, pulse_oximeter]
   - id: low_mood_streak
     title: Low mood or high stress for several days
     action: Talk to the commander about workload, keep a regular schedule and schedule a private conference with the psychologist.

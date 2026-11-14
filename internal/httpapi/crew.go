@@ -14,16 +14,37 @@ import (
 	"aura/internal/readiness"
 	"aura/internal/report"
 	"aura/internal/storage"
+	"aura/internal/supplies"
+	"aura/internal/vehicle"
 )
 
 // evaluation is everything the engines say about one member right now.
 type evaluation struct {
 	result  readiness.Result
 	recs    []guidance.Recommendation
-	history []domain.Measurement // last guidanceHistory, oldest first
+	history []domain.Measurement  // last guidanceHistory, oldest first
+	cabin   *vehicle.ModuleResult // the module the member is in, if any
 }
 
-func (h *handlers) evaluate(ctx context.Context, a domain.Astronaut, m domain.Mission, now time.Time) (evaluation, error) {
+// missionState is the vehicle and the medical kit, shared by all members.
+type missionState struct {
+	vehicle  vehicle.Result
+	supplies []supplies.Item
+}
+
+func (h *handlers) missionState(ctx context.Context, m domain.Mission, now time.Time) (missionState, error) {
+	v, err := h.vehicleState(ctx, m, now)
+	if err != nil {
+		return missionState{}, fmt.Errorf("vehicle: %w", err)
+	}
+	items, err := h.supplyState(ctx, m, now)
+	if err != nil {
+		return missionState{}, fmt.Errorf("supplies: %w", err)
+	}
+	return missionState{vehicle: v, supplies: items}, nil
+}
+
+func (h *handlers) evaluate(ctx context.Context, a domain.Astronaut, m domain.Mission, now time.Time, st missionState) (evaluation, error) {
 	q := h.deps.DB.Q()
 	latest, err := q.LatestMeasurements(ctx, a.ID)
 	if err != nil {
@@ -34,8 +55,13 @@ func (h *handlers) evaluate(ctx context.Context, a domain.Astronaut, m domain.Mi
 		return evaluation{}, fmt.Errorf("history: %w", err)
 	}
 	res := readiness.Assess(readiness.Input{Catalog: h.deps.Catalog, Mission: m, Latest: latest, Now: now})
-	recs := guidance.Evaluate(guidance.Input{Catalog: h.deps.Catalog, Mission: m, Assessment: res, History: history, Now: now})
-	return evaluation{result: res, recs: recs, history: history}, nil
+	var cabin *vehicle.ModuleResult
+	if mr, ok := st.vehicle.Module(a.Module); ok {
+		cabin = &mr
+	}
+	recs := guidance.Evaluate(guidance.Input{Catalog: h.deps.Catalog, Mission: m, Assessment: res, History: history, Cabin: cabin, Now: now})
+	withSupplies(recs, st.supplies)
+	return evaluation{result: res, recs: recs, history: history, cabin: cabin}, nil
 }
 
 // --- flight-surgeon report (FR-32) --------------------------------------------------
@@ -59,14 +85,26 @@ func (h *handlers) report(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := h.deps.Now().UTC()
-	ev, err := h.evaluate(r.Context(), a, m, now)
+	st, err := h.missionState(r.Context(), m, now)
 	if err != nil {
 		h.internal(w, "report", err)
 		return
 	}
+	ev, err := h.evaluate(r.Context(), a, m, now, st)
+	if err != nil {
+		h.internal(w, "report", err)
+		return
+	}
+	var cabinHistory []domain.Telemetry
+	if ev.cabin != nil {
+		if cabinHistory, err = h.deps.DB.Q().ListTelemetry(r.Context(), storage.TelemetryFilter{MissionID: m.ID, Module: ev.cabin.Code, From: now.Add(-report.Window)}); err != nil {
+			h.internal(w, "report cabin history", err)
+			return
+		}
+	}
 	rep := report.Build(report.Input{
 		Catalog: h.deps.Catalog, Mission: m, Astronaut: a, Assessment: ev.result,
-		Recommendations: ev.recs, History: ev.history, Now: now,
+		Recommendations: ev.recs, History: ev.history, Cabin: ev.cabin, CabinHistory: cabinHistory, Now: now,
 	})
 	if format != "text" {
 		writeJSON(w, http.StatusOK, rep)
@@ -138,12 +176,17 @@ func (h *handlers) crewOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := h.deps.Now().UTC()
+	st, err := h.missionState(r.Context(), m, now)
+	if err != nil {
+		h.internal(w, "crew overview", err)
+		return
+	}
 	resp := crewOverviewResponse{GeneratedAt: now, MissionDay: m.Day(now), Members: []crewMember{}}
 	for _, a := range all {
 		if a.Role == domain.RoleFlightSurgeon {
 			continue
 		}
-		ev, err := h.evaluate(r.Context(), a, m, now)
+		ev, err := h.evaluate(r.Context(), a, m, now, st)
 		if err != nil {
 			h.internal(w, "crew overview", err)
 			return

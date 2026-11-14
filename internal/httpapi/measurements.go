@@ -73,6 +73,8 @@ type newMeasurement struct {
 	MeasuredAt *time.Time `json:"measuredAt"`
 	Context    string     `json:"context"`
 	Note       string     `json:"note"`
+	// Source: "" (manual or questionnaire), or "device" when read from a sensor (FR-15).
+	Source string `json:"source"`
 }
 
 type createMeasurementsRequest struct {
@@ -134,8 +136,18 @@ func (h *handlers) createMeasurements(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		source := domain.SourceManual
-		if ind.Input == catalog.InputScale {
+		switch {
+		case ind.Input == catalog.InputScale:
 			source = domain.SourceQuestionnaire
+			if in.Source != "" {
+				writeError(w, http.StatusBadRequest, fmt.Sprintf("measurements[%d]: self-report answers have no device source", i))
+				return
+			}
+		case in.Source == domain.SourceDevice:
+			source = domain.SourceDevice
+		case in.Source != "":
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("measurements[%d]: source must be empty or device", i))
+			return
 		}
 		ms = append(ms, domain.Measurement{
 			AstronautID: a.ID, Indicator: ind.Code, Value: *in.Value, Unit: ind.Unit,

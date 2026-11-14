@@ -19,9 +19,11 @@ type Deps struct {
 	DB        *storage.DB
 	Catalog   *catalog.Catalog
 	Logger    *slog.Logger
-	StaticDir string           // built frontend; empty = API only
-	Demo      bool             // demo mission: list demo accounts, allow reset
-	Now       func() time.Time // clock; defaults to time.Now
+	StaticDir string // built frontend; empty = API only
+	Demo      bool   // demo mission: list demo accounts, allow reset
+	// IngestToken authorizes onboard systems on POST /ingest; empty disables it.
+	IngestToken string
+	Now         func() time.Time // clock; defaults to time.Now
 }
 
 // NewRouter builds the root HTTP handler. All API routes live under /api/v1;
@@ -40,6 +42,8 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/login", h.login)
 	mux.HandleFunc("POST /api/v1/auth/logout", h.logout)
 	mux.HandleFunc("GET /api/v1/auth/demo-accounts", h.demoAccounts)
+	// Onboard systems authenticate with a bearer token instead of a session.
+	mux.HandleFunc("POST /api/v1/ingest", h.ingest)
 
 	// Signed in; per-astronaut routes also check the role policy (FR-72).
 	mux.HandleFunc("GET /api/v1/auth/me", h.authed(h.me))
@@ -53,6 +57,13 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /api/v1/astronauts/{id}/report", h.authed(h.report))
 	mux.HandleFunc("GET /api/v1/crew/overview", h.authed(h.crewOverview))
 	mux.HandleFunc("POST /api/v1/demo/reset", h.authed(h.resetDemo))
+	mux.HandleFunc("GET /api/v1/vehicle", h.authed(h.vehicleStatus))
+	mux.HandleFunc("GET /api/v1/vehicle/telemetry", h.authed(h.vehicleTelemetry))
+	mux.HandleFunc("GET /api/v1/supplies", h.authed(h.listSupplies))
+	mux.HandleFunc("GET /api/v1/supplies/journal", h.authed(h.supplyJournal))
+	mux.HandleFunc("POST /api/v1/supplies/{id}/use", h.authed(h.useSupply))
+	mux.HandleFunc("POST /api/v1/supplies/{id}/count", h.authed(h.countSupply))
+	mux.HandleFunc("POST /api/v1/supplies/{id}/dispose", h.authed(h.disposeSupply))
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "no such endpoint")
 	})

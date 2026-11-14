@@ -24,12 +24,12 @@ func cat(t *testing.T) *catalog.Catalog {
 	return c
 }
 
-// healthy returns a nominal reading for every P0 indicator, taken an hour ago.
+// healthy returns a nominal reading for every indicator, taken an hour ago.
 func healthy() map[string]domain.Measurement {
 	at := now.Add(-time.Hour)
 	vals := map[string]float64{
 		"heart_rate": 66, "bp_systolic": 118, "bp_diastolic": 76, "spo2": 98, "body_temp": 36.7,
-		"glucose": 95, "sleep_hours": 7.5, "mood": 4, "stress": 2,
+		"glucose": 95, "sleep_hours": 7.5, "mood": 4, "stress": 2, "headache": 1,
 	}
 	out := map[string]domain.Measurement{}
 	for k, v := range vals {
@@ -77,8 +77,8 @@ func TestAssess(t *testing.T) {
 				set(m, "mood", 3)
 				set(m, "stress", 3)
 			},
-			// systems: 100,100,100,100,60 → 92
-			wantScore:  ptr(92),
+			// systems with data: 100,100,100,100,60 (behavioral),100 (eyes) → 93
+			wantScore:  ptr(93),
 			wantStatus: domain.StatusNominal,
 			check: func(t *testing.T, r Result) {
 				if s := system(r, "behavioral"); s.Status != domain.StatusCaution || *s.Score != 60 {
@@ -108,8 +108,8 @@ func TestAssess(t *testing.T) {
 				if s.Status != domain.StatusUnknown || s.Indicators[0].Fresh || s.Indicators[0].Value == nil {
 					t.Errorf("respiratory = %+v, want unknown with stale value kept", s)
 				}
-				if r.Completeness != 0.89 {
-					t.Errorf("completeness = %v, want 0.89", r.Completeness)
+				if r.Completeness != 0.9 {
+					t.Errorf("completeness = %v, want 0.9", r.Completeness)
 				}
 			},
 		},
