@@ -25,5 +25,3 @@ go run ./cmd/aura    # http://localhost:8080/api/v1/health
 | Docker | `docker build -t aura-spaceapps-backend .` |
 
 Configuration: see `.env.example` (all variables optional).
-
-Product requirements and the work plan live in the workspace root: `../docs/`.

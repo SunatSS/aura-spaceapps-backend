@@ -1,6 +1,6 @@
 # aura-spaceapps-backend
 
-Go API для AURA. Общий контекст продукта — `../CLAUDE.md`, требования — `../docs/REQUIREMENTS.md`, план — `../docs/PLAN.md`.
+Go API для AURA (Astronaut Universal Readiness Assessment) — инструмент самооценки здоровья астронавта, NASA Space Apps 2026. Веб-интерфейс — репозиторий `aura-spaceapps-frontend`, клонируется рядом.
 
 ## Стек
 
