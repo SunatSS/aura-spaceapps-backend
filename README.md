@@ -34,6 +34,8 @@ npm run dev        # http://localhost:5173
 | `npm run gen:api` | Regenerate API types from `../aura-spaceapps-backend/api/openapi.yaml` |
 
 Live demo: https://aura-spaceapps.onrender.com (free tier — first load after idle takes about a minute).
+Sign in with one of the demo accounts listed on the sign-in screen (password `aura-mx1`): a crew member
+sees their own data, the commander and the flight surgeon see the whole crew.
 
 ## Design standard
 

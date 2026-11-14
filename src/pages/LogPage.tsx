@@ -27,7 +27,9 @@ const CONTEXTS = [
 
 /** Log measurement display: vitals and the daily check-in, saved as one batch at the current time. */
 export function LogPage() {
-  const { current } = useCurrentAstronaut()
+  const { me, current, select } = useCurrentAstronaut()
+  // Readings are logged only by the crew member themself (FR-72); the server enforces it too.
+  const own = current !== undefined && current.id === me.id
   const catalog = useCatalog()
   const mission = useMission()
   const now = useNow()
@@ -84,7 +86,17 @@ export function LogPage() {
       )}
       {catalog.isError && <Notice alert="warning">Cannot load the indicator catalog from the AURA server.</Notice>}
 
-      {catalog.data && (
+      {current && !own &&
+        (me.role === 'flight_surgeon' ? (
+          <Notice alert="advisory">The flight surgeon is on Earth and has no readings to log.</Notice>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <Notice alert="advisory">Readings can only be logged by the crew member themself — {current.name} logs their own.</Notice>
+            <Button onClick={() => select(me.id)}>Log my own readings</Button>
+          </div>
+        ))}
+
+      {catalog.data && own && (
         <>
           <fieldset className="flex flex-wrap items-center gap-3">
             <legend className="mb-2 text-sm leading-5 font-medium text-ink-muted">When were these taken?</legend>

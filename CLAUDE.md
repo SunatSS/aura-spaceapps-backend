@@ -30,7 +30,7 @@ npm run gen:api      # типы из ../aura-spaceapps-backend/api/openapi.yaml 
 
 ```
 src/
-  app/          корень: App (провайдеры), router, Layout (навигация)
+  app/          корень: App (провайдеры, вход: без сессии — LoginPage), router, Layout (навигация по ролям)
   pages/        экраны — по одному на маршрут; только компоновка фич
   features/     фичи: readiness, body-map, measurements, trends, guidance, tasks
                   <feature>/api.ts         хуки useQuery/useMutation
@@ -53,6 +53,7 @@ src/
 - **Доступность:** класс тревоги никогда не передаётся только цветом — только через `shared/ui/StatusBadge` (глиф формы + слово).
 - **Offline:** никаких CDN, Google Fonts, внешних картинок — всё в бандле. Шрифты — `@fontsource/inter` и `@fontsource/dm-mono`, подключены в `main.tsx`.
 - **Body map** — inline SVG-компонент, каждая система организма — отдельный `<path>`/`<g>` с `id` = код системы из API. Без декоративной графики.
+- **Вход и роли:** сессия — `features/auth/api.ts` (`useSession`, ключ `['session']`); любой 401 возвращает на экран входа. Кто на экране — `useCurrentAstronaut()`: `me` (кто вошёл), `current` (чьи данные), `crew` (кого можно открыть). Права проверяет бэкенд; во фронте только прячем лишнее (`seesWholeCrew`).
 - UI на английском. Компоненты — функциональные, именованный экспорт, один компонент на файл.
 
 ## Дизайн: NASA-STD-3001 Vol. 2, Appendix F

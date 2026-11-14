@@ -168,6 +168,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign in; sets the session cookie */
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign out; clears the session cookie */
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who is signed in */
+        get: operations["getSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/demo-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Demo logins for the sign-in screen (demo mission only) */
+        get: operations["listDemoAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/astronauts/{id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        /** Flight-surgeon report with readiness, out-of-range readings, recommendations and 7-day trends (FR-32) */
+        get: operations["getReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/crew/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whole crew at a glance, for the commander, the deputy and the flight surgeon (FR-55, FR-73) */
+        get: operations["getCrewOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/demo/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace all data with a fresh demo mission and sign the caller in again (FR-62) */
+        post: operations["resetDemo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -422,6 +543,118 @@ export interface components {
             commDelayMinS: number;
             commDelayMaxS: number;
             recommendations: components["schemas"]["Recommendation"][];
+        };
+        LoginRequest: {
+            /** @description Case-insensitive */
+            username: string;
+            password: string;
+        };
+        Session: {
+            user: components["schemas"]["Astronaut"];
+            username: string;
+        };
+        DemoAccounts: {
+            /** @description Shared password of every demo account */
+            password: string;
+            accounts: {
+                username: string;
+                name: string;
+                role: components["schemas"]["Role"];
+            }[];
+        };
+        Assessment: {
+            score: number | null;
+            status: components["schemas"]["Status"];
+            cappedByCritical: boolean;
+            completeness: number;
+            systems: components["schemas"]["SystemResult"][];
+            /** Format: date-time */
+            assessedAt: string;
+        };
+        TrendPoint: {
+            /** Format: date-time */
+            t: string;
+            v: number;
+            status: components["schemas"]["Status"];
+        };
+        TrendSeries: {
+            indicator: string;
+            points: components["schemas"]["TrendPoint"][];
+        };
+        CrewMember: {
+            astronaut: components["schemas"]["Astronaut"];
+            readiness: components["schemas"]["Assessment"];
+            warnings: number;
+            cautions: number;
+            escalate: boolean;
+            recommendations: components["schemas"]["Recommendation"][];
+            /** @description Last 7 days */
+            trends: components["schemas"]["TrendSeries"][];
+        };
+        CrewOverview: {
+            /** Format: date-time */
+            generatedAt: string;
+            missionDay: number;
+            members: components["schemas"]["CrewMember"][];
+        };
+        Report: {
+            /** Format: date-time */
+            generatedAt: string;
+            mission: {
+                name: string;
+                /** Format: date-time */
+                startedAt: string;
+                day: number;
+                phase: string;
+                environment: string;
+                gravityG: number;
+                commDelayMinS: number;
+                commDelayMaxS: number;
+            };
+            astronaut: components["schemas"]["Astronaut"];
+            readiness: {
+                score: number | null;
+                status: components["schemas"]["Status"];
+                cappedByCritical: boolean;
+                freshIndicators: number;
+                totalIndicators: number;
+            };
+            escalate: boolean;
+            alerts: {
+                indicator: string;
+                name: string;
+                value: number;
+                /** @description Value with unit or a scale score */
+                display: string;
+                status: components["schemas"]["Status"];
+                /** @enum {string} */
+                direction: "above" | "below";
+                nominal: string;
+                /** Format: date-time */
+                measuredAt: string;
+            }[];
+            stale: {
+                indicator: string;
+                name: string;
+                /** Format: date-time */
+                lastMeasuredAt: string | null;
+            }[];
+            recommendations: components["schemas"]["Recommendation"][];
+            trends: {
+                indicator: string;
+                name: string;
+                unit: string;
+                nominal: string;
+                readings: number;
+                min: number | null;
+                max: number | null;
+                mean: number | null;
+                last: number | null;
+                /** @description Last minus first reading in the window */
+                change: number | null;
+                offNominal: number;
+            }[];
+            disclaimer: string;
         };
     };
     responses: {
@@ -698,6 +931,166 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Signed in */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Signed out */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The session */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            401: components["responses"]["Error"];
+        };
+    };
+    listDemoAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accounts and their shared demo password */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoAccounts"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    getReport: {
+        parameters: {
+            query?: {
+                /** @description text returns a plain-text attachment for the downlink */
+                format?: "json" | "text";
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                    "text/plain": string;
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    getCrewOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every crew member with readiness, alerts and 7-day trends */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrewOverview"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+        };
+    };
+    resetDemo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reset done; new session cookie */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            401: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };

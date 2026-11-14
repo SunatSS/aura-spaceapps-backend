@@ -1,5 +1,8 @@
 import clsx from 'clsx'
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useNavigate } from 'react-router'
+import { seesWholeCrew, useLogout } from '../features/auth/api.ts'
+import { ResetDemo } from '../features/auth/components/ResetDemo.tsx'
+import { roleLabel } from '../features/crew/api.ts'
 import { AstronautSelect } from '../features/crew/components/AstronautSelect.tsx'
 import { useCurrentAstronaut } from '../features/crew/context.ts'
 import { alertCounts, useGuidance } from '../features/guidance/api.ts'
@@ -8,25 +11,34 @@ import { useMission } from '../shared/api/mission.ts'
 import { formatDelay, formatMET, formatUTC } from '../shared/lib/time.ts'
 import { useNow } from '../shared/lib/useNow.ts'
 
-const nav = [
-  { to: '/', label: 'Readiness' },
-  { to: '/body', label: 'Body map' },
-  { to: '/log', label: 'Log measurement' },
-  { to: '/trends', label: 'Trends' },
-]
+type NavItem = { to: string; label: string }
+
+/** Displays by role (FR-72): the crew display for those who see the whole crew; no logging on Earth. */
+function navFor(role: Parameters<typeof seesWholeCrew>[0]): NavItem[] {
+  return [
+    ...(seesWholeCrew(role) ? [{ to: '/crew', label: 'Crew' }] : []),
+    { to: '/', label: 'Readiness' },
+    { to: '/body', label: 'Body map' },
+    ...(role !== 'flight_surgeon' ? [{ to: '/log', label: 'Log measurement' }] : []),
+    { to: '/trends', label: 'Trends' },
+    { to: '/report', label: 'Report' },
+  ]
+}
 
 /**
  * App shell per NASA-STD-3001 Vol. 2 App. F F.4.2: navigation at the top and a
  * dedicated key-information area that is always visible (time, alerts, link).
  */
 export function Layout() {
+  const { me } = useCurrentAstronaut()
+  const navigate = useNavigate()
   return (
     <div className="flex h-full flex-col">
       {/* Wraps to a second row on narrow screens (projectors) instead of hiding key information. */}
       <header className="flex min-h-12 flex-none flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-surface px-4 py-2">
         <span className="text-lg font-bold tracking-[0.04em]">AURA</span>
-        <nav aria-label="Main" className="flex gap-1">
-          {nav.map((item) => (
+        <nav aria-label="Main" className="flex flex-wrap gap-1">
+          {navFor(me.role).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -44,12 +56,14 @@ export function Layout() {
         </nav>
         <AstronautSelect />
         <KeyInfo />
+        <UserBox />
       </header>
       <main className="flex-1 overflow-auto p-8">
         <Outlet />
       </main>
-      <footer className="flex-none border-t border-line px-4 py-2 text-sm leading-5 text-ink-muted">
-        Prototype for NASA Space Apps Challenge 2026 — not a medical device, not endorsed by NASA.
+      <footer className="flex flex-none flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line px-4 py-2 text-sm leading-5 text-ink-muted">
+        <span>Prototype for NASA Space Apps Challenge 2026 — not a medical device, not endorsed by NASA.</span>
+        <ResetDemo onDone={() => void navigate('/')} />
       </footer>
     </div>
   )
@@ -86,6 +100,29 @@ function KeyInfo() {
         )}
       </span>
       {env && <Field k="Earth" v={formatDelay(env.commDelayMinS, env.commDelayMaxS)} />}
+    </div>
+  )
+}
+
+/** Who is signed in, and sign-out. */
+function UserBox() {
+  const { me } = useCurrentAstronaut()
+  const logout = useLogout()
+  return (
+    <div className="flex items-center gap-2 text-sm leading-5">
+      <span>
+        <span className="font-medium text-ink-muted">Signed in </span>
+        <span className="font-semibold">{me.name}</span>
+        <span className="text-ink-muted"> · {roleLabel[me.role]}</span>
+      </span>
+      <button
+        type="button"
+        onClick={() => logout.mutate()}
+        disabled={logout.isPending}
+        className="h-8 rounded-md border-[1.5px] border-line-strong px-3 font-semibold text-ink hover:border-ink"
+      >
+        Sign out
+      </button>
     </div>
   )
 }

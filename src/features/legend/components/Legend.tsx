@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react'
 import type { AlertClass } from '../../../shared/lib/status.ts'
 import { StatusBadge } from '../../../shared/ui/StatusBadge.tsx'
 
-export type LegendSection = 'classes' | 'values' | 'tiles' | 'zones' | 'score' | 'recommendations' | 'statusbar'
+export type LegendSection = 'classes' | 'values' | 'tiles' | 'zones' | 'crew' | 'score' | 'recommendations' | 'statusbar'
 
 type Props = {
   /** Which parts are relevant on this display, in display order. */
@@ -135,6 +135,26 @@ const SECTIONS: Record<LegendSection, ReactNode> = {
       <Row sample={<Swatch className="border-dashed border-unavailable" />}>Not monitored in this prototype.</Row>
       <Row sample={<Swatch className="border-[3px] border-navigation bg-surface-raised" />}>Green outline: the selected system.</Row>
       <Row sample={<span className="font-mono text-sm">Tab · Enter</span>}>Keyboard: move between zones and open one.</Row>
+    </Block>
+  ),
+  crew: (
+    <Block title="Crew display">
+      <Row sample={<Swatch className="border-warning-ink bg-surface-raised" />}>Member card: red border if their readiness is Warning, yellow if Caution.</Row>
+      <Row sample={mono(<><span className="text-warning-ink">W 1</span> · <span className="text-caution-ink">C 2</span></>)}>That member's active warnings and cautions.</Row>
+      <Row
+        sample={
+          <svg viewBox="0 0 56 20" className="h-5 w-14" aria-hidden="true">
+            <line x1="0" y1="5" x2="56" y2="5" className="stroke-line-strong" strokeWidth="1" strokeDasharray="3 3" />
+            <line x1="0" y1="15" x2="56" y2="15" className="stroke-line-strong" strokeWidth="1" strokeDasharray="3 3" />
+            <polyline points="4,12 16,10 28,9 40,4 52,2" fill="none" className="stroke-ink-muted" strokeWidth="1.5" />
+            <path d="M36 7 44 7 40 0Z" className="fill-caution" />
+            <circle cx="52" cy="2" r="2.5" className="fill-ink" />
+          </svg>
+        }
+      >
+        7-day history: dashed lines are the nominal limits, the dot is the latest reading; triangles and diamonds mark Caution and Warning readings.
+      </Row>
+      <Row sample={mono('9/9')}>Fresh data: indicators with a reading inside their freshness window.</Row>
     </Block>
   ),
   score: (
