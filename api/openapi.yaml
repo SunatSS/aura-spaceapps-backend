@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: AURA API
-  version: 0.4.0
+  version: 0.5.0
   description: |
     Astronaut Universal Readiness Assessment — health monitoring API.
     Source of truth for the backend/frontend contract. The frontend generates
@@ -60,6 +60,119 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/CurrentMission" }
         "404": { $ref: "#/components/responses/Error" }
+
+  /auth/passkeys:
+    get:
+      operationId: listPasskeys
+      summary: The signed-in member's passkeys (FR-74)
+      responses:
+        "200":
+          description: Passkeys
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [passkeys]
+                properties:
+                  passkeys: { type: array, items: { $ref: "#/components/schemas/Passkey" } }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /auth/passkeys/{id}:
+    delete:
+      operationId: deletePasskey
+      summary: Remove one of your passkeys
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /auth/passkeys/register/begin:
+    post:
+      operationId: beginPasskeyRegistration
+      summary: Options for navigator.credentials.create(); binary fields are base64url
+      responses:
+        "200":
+          description: Registration options
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PasskeyRegisterOptions" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /auth/passkeys/register/finish:
+    post:
+      operationId: finishPasskeyRegistration
+      summary: Verify and store the new passkey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge, clientDataJSON, attestationObject]
+              additionalProperties: false
+              properties:
+                challenge: { type: string }
+                clientDataJSON: { type: string, description: base64url }
+                attestationObject: { type: string, description: base64url }
+                label: { type: string, description: e.g. Windows Hello }
+      responses:
+        "201":
+          description: Stored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Passkey" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /auth/passkeys/login/begin:
+    post:
+      operationId: beginPasskeyLogin
+      summary: Challenge for navigator.credentials.get() with a discoverable passkey
+      security: []
+      responses:
+        "200":
+          description: Sign-in options
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [challenge, rpId, timeout]
+                properties:
+                  challenge: { type: string }
+                  rpId: { type: string }
+                  timeout: { type: integer }
+
+  /auth/passkeys/login/finish:
+    post:
+      operationId: finishPasskeyLogin
+      summary: Verify the assertion and start a session (sets the cookie)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge, id, clientDataJSON, authenticatorData, signature]
+              additionalProperties: false
+              properties:
+                challenge: { type: string }
+                id: { type: string, description: Credential ID, base64url }
+                clientDataJSON: { type: string }
+                authenticatorData: { type: string }
+                signature: { type: string }
+                userHandle: { type: string }
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
 
   /astronauts:
     get:
@@ -1131,3 +1244,43 @@ components:
         supplyName: { type: string }
         unit: { type: string }
         astronautName: { type: string, description: Empty when nobody in particular }
+
+    # --- passkeys (P2) -------------------------------------------------------------
+    Passkey:
+      type: object
+      required: [id, alg, label, createdAt, lastUsedAt]
+      properties:
+        id: { type: string, description: Credential ID, base64url }
+        alg: { type: integer, description: COSE algorithm (-7 ES256, -257 RS256) }
+        label: { type: string }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, "null"], format: date-time }
+
+    PasskeyRegisterOptions:
+      type: object
+      required: [challenge, rp, user, pubKeyCredParams, excludeCredentialIds, timeout]
+      properties:
+        challenge: { type: string }
+        rp:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string }
+            name: { type: string }
+        user:
+          type: object
+          required: [id, name, displayName]
+          properties:
+            id: { type: string, description: base64url }
+            name: { type: string }
+            displayName: { type: string }
+        pubKeyCredParams:
+          type: array
+          items:
+            type: object
+            required: [type, alg]
+            properties:
+              type: { type: string }
+              alg: { type: integer }
+        excludeCredentialIds: { type: array, items: { type: string } }
+        timeout: { type: integer }

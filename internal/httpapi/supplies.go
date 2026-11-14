@@ -212,7 +212,12 @@ func (h *handlers) changeSupply(w http.ResponseWriter, r *http.Request, fn func(
 }
 
 func decodeStrict(w http.ResponseWriter, r *http.Request, dst any) bool {
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10))
+	return decodeStrictN(w, r, dst, 4<<10)
+}
+
+// decodeStrictN decodes a JSON body of at most limit bytes; unknown fields are errors.
+func decodeStrictN(w http.ResponseWriter, r *http.Request, dst any, limit int64) bool {
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON: "+err.Error())

@@ -42,11 +42,17 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/login", h.login)
 	mux.HandleFunc("POST /api/v1/auth/logout", h.logout)
 	mux.HandleFunc("GET /api/v1/auth/demo-accounts", h.demoAccounts)
+	mux.HandleFunc("POST /api/v1/auth/passkeys/login/begin", h.beginPasskeyLogin)
+	mux.HandleFunc("POST /api/v1/auth/passkeys/login/finish", h.finishPasskeyLogin)
 	// Onboard systems authenticate with a bearer token instead of a session.
 	mux.HandleFunc("POST /api/v1/ingest", h.ingest)
 
 	// Signed in; per-astronaut routes also check the role policy (FR-72).
 	mux.HandleFunc("GET /api/v1/auth/me", h.authed(h.me))
+	mux.HandleFunc("GET /api/v1/auth/passkeys", h.authed(h.listPasskeys))
+	mux.HandleFunc("POST /api/v1/auth/passkeys/register/begin", h.authed(h.beginPasskeyRegistration))
+	mux.HandleFunc("POST /api/v1/auth/passkeys/register/finish", h.authed(h.finishPasskeyRegistration))
+	mux.HandleFunc("DELETE /api/v1/auth/passkeys/{id}", h.authed(h.deletePasskey))
 	mux.HandleFunc("GET /api/v1/astronauts", h.authed(h.listAstronauts))
 	mux.HandleFunc("GET /api/v1/astronauts/{id}", h.authed(h.getAstronaut))
 	mux.HandleFunc("GET /api/v1/astronauts/{id}/readiness", h.authed(h.readiness))
