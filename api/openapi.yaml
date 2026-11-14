@@ -316,10 +316,11 @@ components:
 
     Indicator:
       type: object
-      required: [code, name, unit, system, input, scaleLabels, min, max, step, freshnessHours, hazards, risks, thresholds, about, howToMeasure, whyInSpace, guidance]
+      required: [code, name, shortName, unit, system, input, scaleLabels, min, max, step, freshnessHours, hazards, risks, thresholds, about, howToMeasure, whyInSpace, guidance]
       properties:
         code: { type: string }
         name: { type: string }
+        shortName: { type: string, description: Compact label for tiles and tables }
         unit: { type: string }
         system: { type: string }
         input: { type: string, enum: [number, scale] }

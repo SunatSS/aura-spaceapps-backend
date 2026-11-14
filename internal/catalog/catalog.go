@@ -133,6 +133,7 @@ const (
 type Indicator struct {
 	Code           string       `yaml:"code" json:"code"`
 	Name           string       `yaml:"name" json:"name"`
+	ShortName      string       `yaml:"short_name" json:"shortName"` // compact label for tiles and tables
 	Unit           string       `yaml:"unit" json:"unit"`
 	System         string       `yaml:"system" json:"system"`
 	Input          string       `yaml:"input" json:"input"`
@@ -291,8 +292,8 @@ func (c *Catalog) validate() error {
 		if _, ok := c.systemIdx[ind.System]; !ok {
 			fail("indicator %s: unknown system %q", ind.Code, ind.System)
 		}
-		if ind.Name == "" || ind.Unit == "" {
-			fail("indicator %s: name and unit are required", ind.Code)
+		if ind.Name == "" || ind.ShortName == "" || ind.Unit == "" {
+			fail("indicator %s: name, short_name and unit are required", ind.Code)
 		}
 		if ind.Input != InputNumber && ind.Input != InputScale {
 			fail("indicator %s: input must be %q or %q", ind.Code, InputNumber, InputScale)

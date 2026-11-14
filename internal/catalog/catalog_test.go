@@ -88,6 +88,7 @@ systems: [{code: cardiovascular, name: Heart, description: d, weight: 1, risks: 
 indicators:
   - code: heart_rate
     name: HR
+    short_name: HR
     unit: bpm
     system: cardiovascular
     input: number

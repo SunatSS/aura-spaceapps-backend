@@ -40,6 +40,20 @@ func run(t *testing.T, readings []reading) []Recommendation {
 	return Evaluate(Input{Catalog: cat, Mission: mission, Assessment: a, History: history, Now: now})
 }
 
+func TestBasisFormatsScalesOutOfMax(t *testing.T) {
+	recs := run(t, []reading{{"mood", 3, time.Hour, ""}, {"bp_systolic", 140, time.Hour, ""}})
+	want := map[string]string{
+		"indicator_status:mood":        "Mood: 3/5 (nominal 4–5).",
+		"indicator_status:bp_systolic": "Blood pressure (systolic): 140 mmHg (nominal 90–129).",
+	}
+	for id, basis := range want {
+		r, ok := find(recs, id)
+		if !ok || r.Basis != basis {
+			t.Errorf("%s basis = %q, want %q", id, r.Basis, basis)
+		}
+	}
+}
+
 func find(recs []Recommendation, id string) (Recommendation, bool) {
 	for _, r := range recs {
 		if r.ID == id {

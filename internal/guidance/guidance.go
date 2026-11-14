@@ -227,7 +227,7 @@ func (e *evaluator) indicatorStatus() {
 		r := Recommendation{
 			ID: RuleIndicatorStatus + ":" + ind.Code, Rule: RuleIndicatorStatus, Indicator: ind.Code, System: ind.System,
 			Severity: ir.Status, Title: advice.Title, Action: advice.Action,
-			Basis:          fmt.Sprintf("%s: %s %s (nominal %s).", ind.Name, num(*ir.Value), ind.Unit, formatRange(thr.Nominal)),
+			Basis:          fmt.Sprintf("%s: %s (nominal %s).", ind.Name, valueWithUnit(ind, *ir.Value), formatRange(thr.Nominal)),
 			RecheckMinutes: advice.RecheckMinutes, Risks: ind.Risks,
 		}
 		if advice.Escalate {
@@ -269,6 +269,14 @@ func formatRange(r catalog.Range) string {
 }
 
 func num(v float64) string { return strconv.FormatFloat(v, 'f', -1, 64) }
+
+// valueWithUnit renders "118 mmHg", or "3/5" for self-report scales.
+func valueWithUnit(ind catalog.Indicator, v float64) string {
+	if ind.Input == catalog.InputScale {
+		return num(v) + "/" + num(ind.Max)
+	}
+	return num(v) + " " + ind.Unit
+}
 
 func boolInt(b bool) int {
 	if b {

@@ -195,6 +195,7 @@ systems:
 indicators:
   - code: heart_rate
     name: Resting heart rate
+    short_name: Pulse
     unit: bpm
     system: cardiovascular
     input: number
@@ -229,6 +230,7 @@ indicators:
 
   - code: bp_systolic
     name: Blood pressure (systolic)
+    short_name: Systolic pressure
     unit: mmHg
     system: cardiovascular
     input: number
@@ -263,6 +265,7 @@ indicators:
 
   - code: bp_diastolic
     name: Blood pressure (diastolic)
+    short_name: Diastolic pressure
     unit: mmHg
     system: cardiovascular
     input: number
@@ -295,6 +298,7 @@ indicators:
 
   - code: spo2
     name: Blood oxygen (SpO₂)
+    short_name: SpO₂
     unit: "%"
     system: respiratory
     input: number
@@ -328,6 +332,7 @@ indicators:
 
   - code: body_temp
     name: Body temperature
+    short_name: Temperature
     unit: "°C"
     system: immune
     input: number
@@ -361,6 +366,7 @@ indicators:
 
   - code: glucose
     name: Blood glucose
+    short_name: Glucose
     unit: mg/dL
     system: metabolic
     input: number
@@ -395,6 +401,7 @@ indicators:
 
   - code: sleep_hours
     name: Sleep last night
+    short_name: Sleep
     unit: h
     system: behavioral
     input: number
@@ -426,6 +433,7 @@ indicators:
 
   - code: mood
     name: Mood
+    short_name: Mood
     unit: score
     system: behavioral
     input: scale
@@ -463,6 +471,7 @@ indicators:
 
   - code: stress
     name: Stress
+    short_name: Stress
     unit: score
     system: behavioral
     input: scale
