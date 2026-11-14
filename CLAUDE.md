@@ -1,4 +1,4 @@
-# aura-frontend
+# aura-spaceapps-frontend
 
 Веб-интерфейс AURA. Общий контекст продукта — `../CLAUDE.md`, требования — `../docs/REQUIREMENTS.md`, план — `../docs/PLAN.md`.
 
@@ -19,7 +19,7 @@ npm run build        # tsc -b + vite build
 npm run typecheck
 npm run lint         # oxlint
 npm test             # vitest run
-npm run gen:api      # типы из ../aura-backend/api/openapi.yaml → src/shared/api/schema.d.ts
+npm run gen:api      # типы из ../aura-spaceapps-backend/api/openapi.yaml → src/shared/api/schema.d.ts
 ```
 
 Перед тем как считать задачу готовой: `npm run build`, `npm test`, `npm run lint` — всё чисто.
