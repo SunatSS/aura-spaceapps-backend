@@ -35,7 +35,15 @@ AURA_STATIC_DIR=../aura-spaceapps-frontend/dist go run ./cmd/aura
 Contract: [`api/openapi.yaml`](api/openapi.yaml). Main endpoints under `/api/v1`:
 `/auth/login`, `/auth/me`, `/indicators`, `/missions/current`, `/astronauts`, `/astronauts/{id}/readiness`,
 `/astronauts/{id}/guidance`, `/astronauts/{id}/measurements` (GET/POST), `/astronauts/{id}/activities`,
-`/astronauts/{id}/report` (JSON or `?format=text`), `/crew/overview`, `/demo/reset`.
+`/astronauts/{id}/report` (JSON or `?format=text`), `/crew/overview`, `/demo/reset`,
+`/vehicle`, `/vehicle/telemetry`, `/supplies` (+ `/journal`, `/{id}/use|count|dispose`), `/ingest`.
+
+Onboard systems (environment sensors, dosimeters, wearables) push readings to `POST /api/v1/ingest`
+with a bearer token (`AURA_INGEST_TOKEN`; the public demo uses `aura-demo-ingest`):
+
+```bash
+curl -X POST https://aura-spaceapps.onrender.com/api/v1/ingest   -H "Authorization: Bearer aura-demo-ingest" -H "Content-Type: application/json"   -d '{"telemetry":[{"module":"lab","parameter":"ppco2","value":5.8}]}'
+```
 
 Access is checked on the server: the session is an HTTP-only cookie; passwords are hashed with
 PBKDF2-SHA256 (Go standard library); crew members can open only their own data, the commander,
