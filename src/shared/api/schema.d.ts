@@ -246,6 +246,8 @@ export interface components {
         Indicator: {
             code: string;
             name: string;
+            /** @description Compact label for tiles and tables */
+            shortName: string;
             unit: string;
             system: string;
             /** @enum {string} */

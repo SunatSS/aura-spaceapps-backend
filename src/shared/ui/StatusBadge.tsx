@@ -5,11 +5,13 @@ type Props = {
   alert: AlertClass
   /** Text-only on a surface (no fill), e.g. inside tiles or dense lists. */
   quiet?: boolean
+  /** Quiet badge drawn on an alert fill (reverse-video tile): uses on-alert ink. */
+  onFill?: boolean
   className?: string
 }
 
 /** NASA alert class as glyph + word — colour is never the only cue (App. F F.5.10). */
-export function StatusBadge({ alert, quiet = false, className }: Props) {
+export function StatusBadge({ alert, quiet = false, onFill = false, className }: Props) {
   const g = alertGlyph[alert]
   const filled = !quiet && alert !== 'nominal'
   return (
@@ -18,7 +20,7 @@ export function StatusBadge({ alert, quiet = false, className }: Props) {
         'inline-flex h-6 items-center gap-1 text-sm leading-5 font-semibold',
         filled && [alertBg[alert], 'rounded-sm px-2 text-on-alert'],
         !filled && !quiet && 'rounded-sm border-[1.5px] border-line-strong px-2 text-ink',
-        quiet && alertText[alert],
+        quiet && (onFill ? 'text-on-alert' : alertText[alert]),
         className,
       )}
     >

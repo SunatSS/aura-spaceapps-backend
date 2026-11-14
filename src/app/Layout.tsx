@@ -1,5 +1,8 @@
 import clsx from 'clsx'
 import { NavLink, Outlet } from 'react-router'
+import { AstronautSelect } from '../features/crew/components/AstronautSelect.tsx'
+import { useCurrentAstronaut } from '../features/crew/context.ts'
+import { alertCounts, useGuidance } from '../features/guidance/api.ts'
 import { useHealth } from '../shared/api/health.ts'
 import { useMission } from '../shared/api/mission.ts'
 import { formatDelay, formatMET, formatUTC } from '../shared/lib/time.ts'
@@ -19,7 +22,7 @@ const nav = [
 export function Layout() {
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-12 flex-none items-center gap-6 border-b border-line bg-surface px-4">
+      <header className="flex h-12 flex-none items-center gap-4 border-b border-line bg-surface px-4">
         <span className="text-lg font-bold tracking-[0.04em]">AURA</span>
         <nav aria-label="Main" className="flex gap-1">
           {nav.map((item) => (
@@ -38,6 +41,7 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
+        <AstronautSelect />
         <KeyInfo />
       </header>
       <main className="flex-1 overflow-auto p-8">
@@ -54,13 +58,22 @@ function KeyInfo() {
   const now = useNow()
   const mission = useMission()
   const health = useHealth()
+  const { current } = useCurrentAstronaut()
+  const guidance = useGuidance(current?.id)
+  const counts = alertCounts(guidance.data)
   const aos = health.data?.status === 'ok' && !health.isError
   const env = mission.data?.environment
 
   return (
-    <div className="ml-auto flex items-center gap-4 font-mono text-sm leading-5 whitespace-nowrap">
+    <div className="ml-auto flex items-center gap-3 font-mono text-sm leading-5 whitespace-nowrap">
       <Field k="MET" v={mission.data ? formatMET(new Date(mission.data.startedAt), now) : '—'} />
       <Field k="UTC" v={formatUTC(now)} />
+      <span aria-label={`Alerts: ${counts.warning} warning, ${counts.caution} caution`}>
+        <span className="font-sans font-medium text-ink-muted">Alerts </span>
+        <span className={counts.warning > 0 ? 'text-warning-ink' : undefined}>W {counts.warning}</span>
+        {' · '}
+        <span className={counts.caution > 0 ? 'text-caution-ink' : undefined}>C {counts.caution}</span>
+      </span>
       <span>
         <span className="font-sans font-medium text-ink-muted">Link </span>
         {health.isPending ? (
