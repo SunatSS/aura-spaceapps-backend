@@ -1,4 +1,4 @@
-# aura-backend
+# aura-spaceapps-backend
 
 Go API для AURA. Общий контекст продукта — `../CLAUDE.md`, требования — `../docs/REQUIREMENTS.md`, план — `../docs/PLAN.md`.
 
