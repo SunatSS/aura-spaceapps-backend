@@ -20,6 +20,7 @@ type Deps struct {
 	Catalog   *catalog.Catalog
 	Logger    *slog.Logger
 	StaticDir string           // built frontend; empty = API only
+	Demo      bool             // demo mission: list demo accounts, allow reset
 	Now       func() time.Time // clock; defaults to time.Now
 }
 
@@ -32,16 +33,26 @@ func NewRouter(d Deps) http.Handler {
 	h := &handlers{deps: d}
 
 	mux := http.NewServeMux()
+	// Public: health, the indicator catalog, the mission clock and sign-in.
 	mux.HandleFunc("GET /api/v1/health", h.health)
 	mux.HandleFunc("GET /api/v1/indicators", h.indicators)
 	mux.HandleFunc("GET /api/v1/missions/current", h.currentMission)
-	mux.HandleFunc("GET /api/v1/astronauts", h.listAstronauts)
-	mux.HandleFunc("GET /api/v1/astronauts/{id}", h.getAstronaut)
-	mux.HandleFunc("GET /api/v1/astronauts/{id}/readiness", h.readiness)
-	mux.HandleFunc("GET /api/v1/astronauts/{id}/guidance", h.guidance)
-	mux.HandleFunc("GET /api/v1/astronauts/{id}/measurements", h.listMeasurements)
-	mux.HandleFunc("POST /api/v1/astronauts/{id}/measurements", h.createMeasurements)
-	mux.HandleFunc("GET /api/v1/astronauts/{id}/activities", h.listActivities)
+	mux.HandleFunc("POST /api/v1/auth/login", h.login)
+	mux.HandleFunc("POST /api/v1/auth/logout", h.logout)
+	mux.HandleFunc("GET /api/v1/auth/demo-accounts", h.demoAccounts)
+
+	// Signed in; per-astronaut routes also check the role policy (FR-72).
+	mux.HandleFunc("GET /api/v1/auth/me", h.authed(h.me))
+	mux.HandleFunc("GET /api/v1/astronauts", h.authed(h.listAstronauts))
+	mux.HandleFunc("GET /api/v1/astronauts/{id}", h.authed(h.getAstronaut))
+	mux.HandleFunc("GET /api/v1/astronauts/{id}/readiness", h.authed(h.readiness))
+	mux.HandleFunc("GET /api/v1/astronauts/{id}/guidance", h.authed(h.guidance))
+	mux.HandleFunc("GET /api/v1/astronauts/{id}/measurements", h.authed(h.listMeasurements))
+	mux.HandleFunc("POST /api/v1/astronauts/{id}/measurements", h.authed(h.createMeasurements))
+	mux.HandleFunc("GET /api/v1/astronauts/{id}/activities", h.authed(h.listActivities))
+	mux.HandleFunc("GET /api/v1/astronauts/{id}/report", h.authed(h.report))
+	mux.HandleFunc("GET /api/v1/crew/overview", h.authed(h.crewOverview))
+	mux.HandleFunc("POST /api/v1/demo/reset", h.authed(h.resetDemo))
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "no such endpoint")
 	})

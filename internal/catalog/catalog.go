@@ -9,6 +9,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"aura/internal/domain"
@@ -77,6 +78,23 @@ type Range struct {
 func (r Range) Contains(v float64) bool {
 	return (r.Min == nil || v >= *r.Min) && (r.Max == nil || v <= *r.Max)
 }
+
+// String renders the range for people: "90–129", "≥ 95", "≤ 37.5" or "any".
+func (r Range) String() string {
+	switch {
+	case r.Min != nil && r.Max != nil:
+		return FormatNumber(*r.Min) + "–" + FormatNumber(*r.Max)
+	case r.Min != nil:
+		return "≥ " + FormatNumber(*r.Min)
+	case r.Max != nil:
+		return "≤ " + FormatNumber(*r.Max)
+	default:
+		return "any"
+	}
+}
+
+// FormatNumber renders v with no trailing zeros: 36.6, 118.
+func FormatNumber(v float64) string { return strconv.FormatFloat(v, 'f', -1, 64) }
 
 // covers reports whether r fully contains inner.
 func (r Range) covers(inner Range) bool {
@@ -151,6 +169,14 @@ type Indicator struct {
 	HowToMeasure          []string                          `yaml:"how_to_measure" json:"howToMeasure"`
 	WhyInSpace            string                            `yaml:"why_in_space" json:"whyInSpace"`
 	Guidance              Guidance                          `yaml:"guidance" json:"guidance"`
+}
+
+// FormatValue renders a reading with its unit: "118 mmHg", or "3/5" for self-report scales.
+func (ind Indicator) FormatValue(v float64) string {
+	if ind.Input == InputScale {
+		return FormatNumber(v) + "/" + FormatNumber(ind.Max)
+	}
+	return FormatNumber(v) + " " + ind.Unit
 }
 
 // ThresholdsFor returns the thresholds that apply in env.

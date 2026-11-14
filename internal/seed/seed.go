@@ -18,8 +18,10 @@ import (
 	"fmt"
 	"math"
 	"math/rand/v2"
+	"strings"
 	"time"
 
+	"aura/internal/auth"
 	"aura/internal/catalog"
 	"aura/internal/domain"
 	"aura/internal/storage"
@@ -99,10 +101,38 @@ var crew = []member{
 
 const flightSurgeon = "Dr. Sarah Chen"
 
+// DemoPassword is the password of every demo account. It is shown on the
+// sign-in screen (FR-71): this is a public hackathon demo, not a real system.
+const DemoPassword = "aura-mx1"
+
 // Run inserts the demo mission into an empty database.
 func Run(ctx context.Context, db *storage.DB, cat *catalog.Catalog, now time.Time) error {
+	return db.Tx(ctx, func(q storage.Queries) error { return Fill(ctx, q, cat, now) })
+}
+
+// Fill inserts the demo mission using q, e.g. inside a transaction that has
+// just cleared the database (demo reset, FR-62).
+func Fill(ctx context.Context, q storage.Queries, cat *catalog.Catalog, now time.Time) error {
 	g := generator{cat: cat, now: now.UTC(), rnd: rand.New(rand.NewPCG(2026, 1115))}
-	return db.Tx(ctx, func(q storage.Queries) error { return g.run(ctx, q) })
+	return g.run(ctx, q)
+}
+
+// username is the demo login: the surname in lower case ("Dr. Sarah Chen" → "chen").
+func username(name string) string {
+	f := strings.Fields(name)
+	return strings.ToLower(f[len(f)-1])
+}
+
+// account creates a mission member who can sign in with DemoPassword.
+func account(ctx context.Context, q storage.Queries, a *domain.Astronaut) error {
+	if err := q.CreateAstronaut(ctx, a); err != nil {
+		return err
+	}
+	hash, err := auth.HashPassword(DemoPassword)
+	if err != nil {
+		return err
+	}
+	return q.SetCredentials(ctx, a.ID, username(a.Name), hash)
 }
 
 type generator struct {
@@ -130,13 +160,13 @@ func (g *generator) run(ctx context.Context, q storage.Queries) error {
 		return err
 	}
 	surgeon := domain.Astronaut{MissionID: mission.ID, Name: flightSurgeon, Role: domain.RoleFlightSurgeon}
-	if err := q.CreateAstronaut(ctx, &surgeon); err != nil {
+	if err := account(ctx, q, &surgeon); err != nil {
 		return err
 	}
 
 	for idx, mem := range crew {
 		a := domain.Astronaut{MissionID: mission.ID, Name: mem.name, Role: mem.role}
-		if err := q.CreateAstronaut(ctx, &a); err != nil {
+		if err := account(ctx, q, &a); err != nil {
 			return err
 		}
 		var ms []domain.Measurement

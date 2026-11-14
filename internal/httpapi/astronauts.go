@@ -3,9 +3,11 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
+	"aura/internal/auth"
 	"aura/internal/domain"
 	"aura/internal/guidance"
 	"aura/internal/readiness"
@@ -25,6 +27,10 @@ func (h *handlers) listAstronauts(w http.ResponseWriter, r *http.Request) {
 		h.internal(w, "list astronauts", err)
 		return
 	}
+	// A crew member sees only themself (FR-72).
+	if me := currentUser(r); !auth.SeesWholeCrew(me.Role) {
+		crew = slices.DeleteFunc(crew, func(a domain.Astronaut) bool { return a.ID != me.ID })
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"astronauts": crew})
 }
 
@@ -34,7 +40,8 @@ func (h *handlers) getAstronaut(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// loadAstronaut resolves {id}; on failure it writes the response and returns false.
+// loadAstronaut resolves {id} and checks that the signed-in member may view
+// it; on failure it writes the response and returns false.
 func (h *handlers) loadAstronaut(w http.ResponseWriter, r *http.Request) (domain.Astronaut, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil || id <= 0 {
@@ -48,6 +55,10 @@ func (h *handlers) loadAstronaut(w http.ResponseWriter, r *http.Request) (domain
 	}
 	if err != nil {
 		h.internal(w, "get astronaut", err)
+		return a, false
+	}
+	if !auth.CanView(currentUser(r), a) {
+		writeError(w, http.StatusForbidden, "crew members can only view their own data")
 		return a, false
 	}
 	return a, true

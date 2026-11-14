@@ -12,10 +12,11 @@ type astronautsBody struct {
 	Astronauts []domain.Astronaut `json:"astronauts"`
 }
 
+// findAstronaut looks a member up as the commander, who sees the whole crew.
 func findAstronaut(t *testing.T, e testEnv, name string) domain.Astronaut {
 	t.Helper()
 	var body astronautsBody
-	e.do(http.MethodGet, "/api/v1/astronauts", nil, http.StatusOK, &body)
+	e.login("morgan").do(http.MethodGet, "/api/v1/astronauts", nil, http.StatusOK, &body)
 	for _, a := range body.Astronauts {
 		if a.Name == name {
 			return a
@@ -58,7 +59,7 @@ func TestMissionAndCatalog(t *testing.T) {
 	}
 
 	var crew astronautsBody
-	e.do(http.MethodGet, "/api/v1/astronauts", nil, http.StatusOK, &crew)
+	e.login("chen").do(http.MethodGet, "/api/v1/astronauts", nil, http.StatusOK, &crew)
 	if len(crew.Astronauts) != 5 {
 		t.Errorf("crew size = %d, want 5", len(crew.Astronauts))
 	}
@@ -87,6 +88,7 @@ type guidanceBody struct {
 func TestDemoScenario(t *testing.T) {
 	e := newTestEnv(t, true, "")
 	amina := findAstronaut(t, e, "Amina Rahimova")
+	e = e.login("rahimova")
 	base := fmt.Sprintf("/api/v1/astronauts/%d", amina.ID)
 
 	var before readinessBody
@@ -120,7 +122,7 @@ func TestDemoScenario(t *testing.T) {
 	for _, r := range g.Recommendations {
 		ids[r.ID] = true
 	}
-	if !ids["indicator_status:bp_systolic"] || !ids["sleep_debt:sleep_hours"] {
+	if !ids["indicator_status:bp_systolic"] || ids["indicator_status:bp_diastolic"] || !ids["sleep_debt:sleep_hours"] {
 		t.Errorf("recommendations = %+v", g.Recommendations)
 	}
 	if g.CommDelayMaxS != 1320 {
@@ -159,6 +161,7 @@ func TestCreateMeasurementValidation(t *testing.T) {
 	e := newTestEnv(t, true, "")
 	lucas := findAstronaut(t, e, "Lucas Ferreira")
 	surgeon := findAstronaut(t, e, "Dr. Sarah Chen")
+	e = e.login("ferreira")
 	path := fmt.Sprintf("/api/v1/astronauts/%d/measurements", lucas.ID)
 
 	tests := []struct {
@@ -181,7 +184,7 @@ func TestCreateMeasurementValidation(t *testing.T) {
 	}
 
 	ok := map[string]any{"measurements": []any{map[string]any{"indicator": "heart_rate", "value": 70}}}
-	e.do(http.MethodPost, fmt.Sprintf("/api/v1/astronauts/%d/measurements", surgeon.ID), ok, http.StatusBadRequest, nil)
+	e.do(http.MethodPost, fmt.Sprintf("/api/v1/astronauts/%d/measurements", surgeon.ID), ok, http.StatusForbidden, nil)
 	e.do(http.MethodPost, "/api/v1/astronauts/9999/measurements", ok, http.StatusNotFound, nil)
 	e.do(http.MethodGet, "/api/v1/astronauts/abc/readiness", nil, http.StatusBadRequest, nil)
 	e.do(http.MethodGet, fmt.Sprintf("/api/v1/astronauts/%d/measurements?indicator=nope", lucas.ID), nil, http.StatusBadRequest, nil)

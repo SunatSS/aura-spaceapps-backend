@@ -11,7 +11,6 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
-	"strconv"
 	"time"
 
 	"aura/internal/catalog"
@@ -227,7 +226,7 @@ func (e *evaluator) indicatorStatus() {
 		r := Recommendation{
 			ID: RuleIndicatorStatus + ":" + ind.Code, Rule: RuleIndicatorStatus, Indicator: ind.Code, System: ind.System,
 			Severity: ir.Status, Title: advice.Title, Action: advice.Action,
-			Basis:          fmt.Sprintf("%s: %s (nominal %s).", ind.Name, valueWithUnit(ind, *ir.Value), formatRange(thr.Nominal)),
+			Basis:          fmt.Sprintf("%s: %s (nominal %s).", ind.Name, ind.FormatValue(*ir.Value), thr.Nominal),
 			RecheckMinutes: advice.RecheckMinutes, Risks: ind.Risks,
 		}
 		if advice.Escalate {
@@ -246,6 +245,39 @@ func (e *evaluator) indicatorStatus() {
 		}
 		e.out = append(e.out, r)
 	}
+	e.mergeBloodPressure()
+}
+
+// mergeBloodPressure turns separate systolic and diastolic advice into one
+// card: it is one measurement and one action for the crew member.
+func (e *evaluator) mergeBloodPressure() {
+	const sys, dia = "bp_systolic", "bp_diastolic"
+	si := slices.IndexFunc(e.out, func(r Recommendation) bool { return r.Rule != RuleSleepDebt && r.Indicator == sys })
+	di := slices.IndexFunc(e.out, func(r Recommendation) bool { return r.Rule != RuleSleepDebt && r.Indicator == dia })
+	if si < 0 || di < 0 {
+		return
+	}
+	base, other := e.out[si], e.out[di]
+	if c := cmp.Compare(other.Severity.Severity(), base.Severity.Severity()); c > 0 || (c == 0 && other.Escalate && !base.Escalate) {
+		base, other = other, base
+	}
+	if !base.Escalate && other.Escalate {
+		base.Escalate, base.EscalateReason = true, other.EscalateReason
+	}
+	sInd, _ := e.in.Catalog.Indicator(sys)
+	dInd, _ := e.in.Catalog.Indicator(dia)
+	sv, dv := e.current[sys], e.current[dia]
+	if sv.Value != nil && dv.Value != nil {
+		base.Basis = fmt.Sprintf("Blood pressure: %s/%s %s (nominal %s / %s).",
+			num(*sv.Value), num(*dv.Value), sInd.Unit,
+			sInd.ThresholdsFor(sv.Environment).Nominal, dInd.ThresholdsFor(dv.Environment).Nominal)
+	}
+	keep, drop := si, di
+	if base.Indicator == dia {
+		keep, drop = di, si
+	}
+	e.out[keep] = base
+	e.out = slices.Delete(e.out, drop, drop+1)
 }
 
 func describeLevel(code string) string {
@@ -255,28 +287,7 @@ func describeLevel(code string) string {
 	return "very low"
 }
 
-func formatRange(r catalog.Range) string {
-	switch {
-	case r.Min != nil && r.Max != nil:
-		return num(*r.Min) + "–" + num(*r.Max)
-	case r.Min != nil:
-		return "≥ " + num(*r.Min)
-	case r.Max != nil:
-		return "≤ " + num(*r.Max)
-	default:
-		return "any"
-	}
-}
-
-func num(v float64) string { return strconv.FormatFloat(v, 'f', -1, 64) }
-
-// valueWithUnit renders "118 mmHg", or "3/5" for self-report scales.
-func valueWithUnit(ind catalog.Indicator, v float64) string {
-	if ind.Input == catalog.InputScale {
-		return num(v) + "/" + num(ind.Max)
-	}
-	return num(v) + " " + ind.Unit
-}
+func num(v float64) string { return catalog.FormatNumber(v) }
 
 func boolInt(b bool) int {
 	if b {

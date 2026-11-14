@@ -65,6 +65,16 @@ func find(recs []Recommendation, id string) (Recommendation, bool) {
 
 const day = 24 * time.Hour
 
+func TestBloodPressureMergedBasis(t *testing.T) {
+	recs := run(t, []reading{{"bp_systolic", 165, time.Hour, ""}, {"bp_diastolic", 100, time.Hour, ""}})
+	if len(recs) != 1 {
+		t.Fatalf("got %d recommendations, want one blood-pressure card: %+v", len(recs), recs)
+	}
+	if want := "Blood pressure: 165/100 mmHg (nominal 90–129 / 60–84)."; recs[0].Basis != want {
+		t.Errorf("basis = %q, want %q", recs[0].Basis, want)
+	}
+}
+
 func TestEvaluate(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -84,15 +94,15 @@ func TestEvaluate(t *testing.T) {
 			wantEscalate: map[string]bool{"indicator_status:bp_systolic": false},
 		},
 		{
-			name: "single critical blood pressure does not escalate, repeated does",
+			name: "blood pressure is one card; repeated critical diastolic escalates it",
 			readings: []reading{
 				{"bp_systolic", 165, time.Hour, ""},
 				{"bp_systolic", 120, day, ""},
 				{"bp_diastolic", 105, time.Hour, ""},
 				{"bp_diastolic", 102, 2 * time.Hour, ""},
 			},
-			wantIDs:      []string{"repeated_critical:bp_diastolic", "indicator_status:bp_systolic"},
-			wantEscalate: map[string]bool{"indicator_status:bp_systolic": false, "repeated_critical:bp_diastolic": true},
+			wantIDs:      []string{"repeated_critical:bp_diastolic"},
+			wantEscalate: map[string]bool{"repeated_critical:bp_diastolic": true},
 		},
 		{
 			name: "critical SpO2 escalates by catalog advice",

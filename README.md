@@ -16,6 +16,14 @@ go run ./cmd/aura    # http://localhost:8080/api/v1/health
 On first start with an empty database the server seeds a demo mission
 (Mars Expedition MX-1, mission day 210, crew of four + flight surgeon, 30 days of readings).
 
+Sign in with a demo account — the password for all of them is `aura-mx1` (also shown on the sign-in screen):
+
+| Username | Role | Sees |
+|---|---|---|
+| `rahimova`, `ferreira` | Crew | Own readings, recommendations and report |
+| `morgan`, `sato` | Commander, deputy | Whole crew; log only their own readings |
+| `chen` | Flight surgeon (on Earth) | Crew overview and reports |
+
 Serve the web UI from the same binary:
 
 ```bash
@@ -25,8 +33,13 @@ AURA_STATIC_DIR=../aura-spaceapps-frontend/dist go run ./cmd/aura
 ## API
 
 Contract: [`api/openapi.yaml`](api/openapi.yaml). Main endpoints under `/api/v1`:
-`/indicators`, `/missions/current`, `/astronauts`, `/astronauts/{id}/readiness`,
-`/astronauts/{id}/guidance`, `/astronauts/{id}/measurements` (GET/POST), `/astronauts/{id}/activities`.
+`/auth/login`, `/auth/me`, `/indicators`, `/missions/current`, `/astronauts`, `/astronauts/{id}/readiness`,
+`/astronauts/{id}/guidance`, `/astronauts/{id}/measurements` (GET/POST), `/astronauts/{id}/activities`,
+`/astronauts/{id}/report` (JSON or `?format=text`), `/crew/overview`, `/demo/reset`.
+
+Access is checked on the server: the session is an HTTP-only cookie; passwords are hashed with
+PBKDF2-SHA256 (Go standard library); crew members can open only their own data, the commander,
+the deputy and the flight surgeon the whole crew, and readings are logged only by the crew member themself.
 
 Health content (indicators, thresholds, texts, NASA HRP risks) lives in
 [`internal/catalog/catalog.yaml`](internal/catalog/catalog.yaml).

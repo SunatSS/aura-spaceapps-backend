@@ -1,20 +1,28 @@
 openapi: 3.1.0
 info:
   title: AURA API
-  version: 0.2.0
+  version: 0.3.0
   description: |
     Astronaut Universal Readiness Assessment — health monitoring API.
     Source of truth for the backend/frontend contract. The frontend generates
     TypeScript types from this file (`npm run gen:api` in aura-spaceapps-frontend).
 
     Timestamps are RFC 3339 in UTC. Statuses everywhere: unknown | nominal | caution | critical.
+
+    Access (FR-71, FR-72): sign in with POST /auth/login; the session is an
+    HTTP-only cookie. Crew members see only their own data; the commander, the
+    deputy and the flight surgeon see the whole crew. Readings can only be
+    logged by the crew member themself. Missing session → 401, role → 403.
 servers:
   - url: /api/v1
+security:
+  - session: []
 
 paths:
   /health:
     get:
       operationId: getHealth
+      security: []
       summary: Liveness and database check
       responses:
         "200":
@@ -31,6 +39,7 @@ paths:
   /indicators:
     get:
       operationId: getCatalog
+      security: []
       summary: Health content catalog — indicators, body systems, NASA HRP hazards and risks, environments
       responses:
         "200":
@@ -42,6 +51,7 @@ paths:
   /missions/current:
     get:
       operationId: getCurrentMission
+      security: []
       summary: Current mission with phases, current phase, environment and mission day
       responses:
         "200":
@@ -188,7 +198,114 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
+  /auth/login:
+    post:
+      operationId: login
+      summary: Sign in; sets the session cookie
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /auth/logout:
+    post:
+      operationId: logout
+      summary: Sign out; clears the session cookie
+      security: []
+      responses:
+        "204": { description: Signed out }
+
+  /auth/me:
+    get:
+      operationId: getSession
+      summary: Who is signed in
+      responses:
+        "200":
+          description: The session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /auth/demo-accounts:
+    get:
+      operationId: listDemoAccounts
+      summary: Demo logins for the sign-in screen (demo mission only)
+      security: []
+      responses:
+        "200":
+          description: Accounts and their shared demo password
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DemoAccounts" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /astronauts/{id}/report:
+    parameters:
+      - $ref: "#/components/parameters/AstronautId"
+    get:
+      operationId: getReport
+      summary: Flight-surgeon report with readiness, out-of-range readings, recommendations and 7-day trends (FR-32)
+      parameters:
+        - name: format
+          in: query
+          schema: { type: string, enum: [json, text], default: json }
+          description: text returns a plain-text attachment for the downlink
+      responses:
+        "200":
+          description: The report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Report" }
+            text/plain:
+              schema: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /crew/overview:
+    get:
+      operationId: getCrewOverview
+      summary: Whole crew at a glance, for the commander, the deputy and the flight surgeon (FR-55, FR-73)
+      responses:
+        "200":
+          description: Every crew member with readiness, alerts and 7-day trends
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CrewOverview" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /demo/reset:
+    post:
+      operationId: resetDemo
+      summary: Replace all data with a fresh demo mission and sign the caller in again (FR-62)
+      responses:
+        "200":
+          description: Reset done; new session cookie
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
 components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: aura_session
   parameters:
     AstronautId:
       name: id
@@ -506,3 +623,152 @@ components:
         commDelayMinS: { type: integer }
         commDelayMaxS: { type: integer }
         recommendations: { type: array, items: { $ref: "#/components/schemas/Recommendation" } }
+
+    # --- access -------------------------------------------------------------------
+    LoginRequest:
+      type: object
+      required: [username, password]
+      additionalProperties: false
+      properties:
+        username: { type: string, description: Case-insensitive }
+        password: { type: string }
+
+    Session:
+      type: object
+      required: [user, username]
+      properties:
+        user: { $ref: "#/components/schemas/Astronaut" }
+        username: { type: string }
+
+    DemoAccounts:
+      type: object
+      required: [password, accounts]
+      properties:
+        password: { type: string, description: Shared password of every demo account }
+        accounts:
+          type: array
+          items:
+            type: object
+            required: [username, name, role]
+            properties:
+              username: { type: string }
+              name: { type: string }
+              role: { $ref: "#/components/schemas/Role" }
+
+    # --- crew overview and report ---------------------------------------------------
+    Assessment:
+      type: object
+      required: [score, status, cappedByCritical, completeness, systems, assessedAt]
+      properties:
+        score: { type: [integer, "null"] }
+        status: { $ref: "#/components/schemas/Status" }
+        cappedByCritical: { type: boolean }
+        completeness: { type: number }
+        systems: { type: array, items: { $ref: "#/components/schemas/SystemResult" } }
+        assessedAt: { type: string, format: date-time }
+
+    TrendPoint:
+      type: object
+      required: [t, v, status]
+      properties:
+        t: { type: string, format: date-time }
+        v: { type: number }
+        status: { $ref: "#/components/schemas/Status" }
+
+    TrendSeries:
+      type: object
+      required: [indicator, points]
+      properties:
+        indicator: { type: string }
+        points: { type: array, items: { $ref: "#/components/schemas/TrendPoint" } }
+
+    CrewMember:
+      type: object
+      required: [astronaut, readiness, warnings, cautions, escalate, recommendations, trends]
+      properties:
+        astronaut: { $ref: "#/components/schemas/Astronaut" }
+        readiness: { $ref: "#/components/schemas/Assessment" }
+        warnings: { type: integer }
+        cautions: { type: integer }
+        escalate: { type: boolean }
+        recommendations: { type: array, items: { $ref: "#/components/schemas/Recommendation" } }
+        trends: { type: array, items: { $ref: "#/components/schemas/TrendSeries" }, description: Last 7 days, one series per catalog indicator }
+
+    CrewOverview:
+      type: object
+      required: [generatedAt, missionDay, members]
+      properties:
+        generatedAt: { type: string, format: date-time }
+        missionDay: { type: integer }
+        members: { type: array, items: { $ref: "#/components/schemas/CrewMember" } }
+
+    Report:
+      type: object
+      required: [generatedAt, mission, astronaut, readiness, escalate, alerts, stale, recommendations, trends, disclaimer]
+      properties:
+        generatedAt: { type: string, format: date-time }
+        mission:
+          type: object
+          required: [name, startedAt, day, phase, environment, gravityG, commDelayMinS, commDelayMaxS]
+          properties:
+            name: { type: string }
+            startedAt: { type: string, format: date-time }
+            day: { type: integer }
+            phase: { type: string }
+            environment: { type: string }
+            gravityG: { type: number }
+            commDelayMinS: { type: integer }
+            commDelayMaxS: { type: integer }
+        astronaut: { $ref: "#/components/schemas/Astronaut" }
+        readiness:
+          type: object
+          required: [score, status, cappedByCritical, freshIndicators, totalIndicators]
+          properties:
+            score: { type: [integer, "null"] }
+            status: { $ref: "#/components/schemas/Status" }
+            cappedByCritical: { type: boolean }
+            freshIndicators: { type: integer }
+            totalIndicators: { type: integer }
+        escalate: { type: boolean }
+        alerts:
+          type: array
+          items:
+            type: object
+            required: [indicator, name, value, display, status, direction, nominal, measuredAt]
+            properties:
+              indicator: { type: string }
+              name: { type: string }
+              value: { type: number }
+              display: { type: string, description: Value with unit or a scale score }
+              status: { $ref: "#/components/schemas/Status" }
+              direction: { type: string, enum: [above, below] }
+              nominal: { type: string }
+              measuredAt: { type: string, format: date-time }
+        stale:
+          type: array
+          items:
+            type: object
+            required: [indicator, name, lastMeasuredAt]
+            properties:
+              indicator: { type: string }
+              name: { type: string }
+              lastMeasuredAt: { type: [string, "null"], format: date-time }
+        recommendations: { type: array, items: { $ref: "#/components/schemas/Recommendation" } }
+        trends:
+          type: array
+          items:
+            type: object
+            required: [indicator, name, unit, nominal, readings, min, max, mean, last, change, offNominal]
+            properties:
+              indicator: { type: string }
+              name: { type: string }
+              unit: { type: string }
+              nominal: { type: string }
+              readings: { type: integer }
+              min: { type: [number, "null"] }
+              max: { type: [number, "null"] }
+              mean: { type: [number, "null"] }
+              last: { type: [number, "null"] }
+              change: { type: [number, "null"], description: Last minus first reading in the window }
+              offNominal: { type: integer }
+        disclaimer: { type: string }

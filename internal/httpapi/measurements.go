@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"aura/internal/auth"
 	"aura/internal/catalog"
 	"aura/internal/domain"
 	"aura/internal/readiness"
@@ -85,6 +86,10 @@ func (h *handlers) createMeasurements(w http.ResponseWriter, r *http.Request) {
 	}
 	if a.Role == domain.RoleFlightSurgeon {
 		writeError(w, http.StatusBadRequest, "the flight surgeon is on Earth and has no health readings")
+		return
+	}
+	if !auth.CanLog(currentUser(r), a) {
+		writeError(w, http.StatusForbidden, "readings can only be logged by the crew member themself")
 		return
 	}
 	m, ok := h.loadMission(w, r)
