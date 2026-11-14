@@ -1,3 +1,4 @@
+import { Legend } from '../features/legend/components/Legend.tsx'
 import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
@@ -72,6 +73,8 @@ export function LogPage() {
           </span>
         </p>
       </header>
+
+      <Legend sections={['classes', 'values', 'statusbar']} />
 
       {saved && <SavedSummary saved={saved} byCode={byCode} />}
       {save.isError && (

@@ -1,3 +1,4 @@
+import { Legend } from '../features/legend/components/Legend.tsx'
 import clsx from 'clsx'
 import { useState, type ReactNode } from 'react'
 import { roleLabel } from '../features/crew/api.ts'
@@ -42,6 +43,8 @@ export function TrendsPage() {
         <h1 className="text-[40px] leading-[48px] font-semibold tracking-[-0.01em]">Trends</h1>
         <p className="text-ink-muted">{current ? `${current.name} · ${roleLabel[current.role]}` : 'Loading crew…'} · reading history across mission phases.</p>
       </header>
+
+      <Legend sections={['classes', 'values', 'statusbar']} />
 
       {(catalog.isError || readings.isError) && <Notice alert="warning">Cannot load data from the AURA server. Check the link status in the top bar.</Notice>}
 
@@ -118,7 +121,7 @@ export function TrendsPage() {
                 to={to}
               />
             )}
-            <Legend />
+            <ChartLegend />
           </section>
 
           <section aria-labelledby="oor-title" className="flex flex-col gap-3">
@@ -170,7 +173,7 @@ export function TrendsPage() {
 }
 
 /** Legend for every mark on the chart (App. F F.5.8). */
-function Legend() {
+function ChartLegend() {
   const item = (svg: ReactNode, text: string) => (
     <li className="flex items-center gap-2">
       <svg viewBox="0 0 28 14" className="h-3.5 w-7 flex-none" aria-hidden="true">

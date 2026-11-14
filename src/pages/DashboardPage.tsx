@@ -1,3 +1,4 @@
+import { Legend } from '../features/legend/components/Legend.tsx'
 import { Link } from 'react-router'
 import { roleLabel } from '../features/crew/api.ts'
 import { systemCode } from '../features/readiness/codes.ts'
@@ -39,6 +40,8 @@ export function DashboardPage() {
           {mission.data?.environment && ` · ${mission.data.environment.gravityG} g`}
         </p>
       </header>
+
+      <Legend sections={['classes', 'values', 'tiles', 'score', 'recommendations', 'statusbar']} />
 
       {error && <Notice alert="warning">Cannot load data from the AURA server. Check the link status in the top bar.</Notice>}
 

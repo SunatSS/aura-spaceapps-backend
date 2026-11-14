@@ -1,3 +1,4 @@
+import { Legend } from '../features/legend/components/Legend.tsx'
 import { useSearchParams } from 'react-router'
 import { BodyFigure, type Zone } from '../features/body-map/components/BodyFigure.tsx'
 import { SystemDetail } from '../features/body-map/components/SystemDetail.tsx'
@@ -56,6 +57,8 @@ export function BodyMapPage() {
           recommendations.
         </p>
       </header>
+
+      <Legend sections={['classes', 'values', 'zones', 'recommendations', 'statusbar']} />
 
       {error && <Notice alert="warning">Cannot load data from the AURA server. Check the link status in the top bar.</Notice>}
 
