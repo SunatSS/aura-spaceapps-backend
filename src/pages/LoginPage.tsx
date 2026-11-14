@@ -6,7 +6,8 @@ import { formatMET, formatUTC } from '../shared/lib/time.ts'
 import { useNow } from '../shared/lib/useNow.ts'
 import { Button } from '../shared/ui/Button.tsx'
 import { Notice } from '../shared/ui/Notice.tsx'
-import { useDemoAccounts, useLogin, type DemoAccounts, type Session } from '../features/auth/api.ts'
+import { useDemoAccounts, useLogin, usePasskeyLogin, type DemoAccounts, type Session } from '../features/auth/api.ts'
+import { passkeyError, passkeysSupported } from '../features/auth/passkeys.ts'
 
 /** What each role can open, shown next to the demo accounts (FR-72). */
 const ACCESS: Record<Session['user']['role'], string> = {
@@ -21,6 +22,7 @@ type Props = { onSignedIn: (s: Session) => void }
 /** Sign-in display (FR-71): username and password, plus one-click demo accounts. */
 export function LoginPage({ onSignedIn }: Props) {
   const login = useLogin()
+  const passkey = usePasskeyLogin()
   const demo = useDemoAccounts()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -81,6 +83,15 @@ export function LoginPage({ onSignedIn }: Props) {
               <Button type="submit" variant="command" disabled={login.isPending} className="justify-center">
                 {login.isPending ? 'Signing in…' : 'Sign in'}
               </Button>
+              {passkeysSupported() && (
+                <>
+                  <Button className="justify-center" disabled={passkey.isPending} onClick={() => passkey.mutate(undefined, { onSuccess: onSignedIn })}>
+                    {passkey.isPending ? 'Waiting for your device…' : 'Sign in with a passkey'}
+                  </Button>
+                  <p className="text-sm leading-5 text-ink-muted">Windows Hello, Touch ID or Face ID. Set one up under Account after signing in.</p>
+                  {passkey.isError && <Notice alert="warning">{passkey.error instanceof ApiError ? passkey.error.message : passkeyError(passkey.error)}</Notice>}
+                </>
+              )}
             </form>
 
             {demo.data && <DemoAccountList demo={demo.data} pending={login.isPending} onPick={(u) => signIn(u, demo.data!.password)} />}

@@ -1,4 +1,5 @@
 import { createBrowserRouter } from 'react-router'
+import { AccountPage } from '../pages/AccountPage.tsx'
 import { BodyMapPage } from '../pages/BodyMapPage.tsx'
 import { CrewPage } from '../pages/CrewPage.tsx'
 import { DashboardPage } from '../pages/DashboardPage.tsx'
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
           { path: 'log', element: <LogPage /> },
           { path: 'report', element: <ReportPage /> },
           { path: 'vehicle', element: <VehiclePage /> },
+          { path: 'account', element: <AccountPage /> },
           { path: 'supplies', element: <SuppliesPage /> },
           // Charts (Recharts) load only when Trends is opened.
           { path: 'trends', lazy: async () => ({ Component: (await import('../pages/TrendsPage.tsx')).TrendsPage }) },

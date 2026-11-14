@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api, ApiError, type Schemas } from '../../shared/api/client.ts'
+import { registerPasskey, signInWithPasskey } from './passkeys.ts'
 
 export type Session = Schemas['Session']
 export type DemoAccounts = Schemas['DemoAccounts']
@@ -81,4 +82,37 @@ export function useResetDemo() {
 /** Mirrors the backend policy (auth.SeesWholeCrew): who may open other members and the crew display. */
 export function seesWholeCrew(role: Session['user']['role']): boolean {
   return role === 'commander' || role === 'deputy_commander' || role === 'flight_surgeon'
+}
+
+/** The signed-in member's passkeys. */
+export function usePasskeys() {
+  return useQuery({
+    queryKey: ['passkeys'],
+    queryFn: () => api<{ passkeys: Schemas['Passkey'][] }>('/auth/passkeys').then((r) => r.passkeys),
+  })
+}
+
+export function useRegisterPasskey() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (label: string) => registerPasskey(label),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['passkeys'] }),
+  })
+}
+
+export function useDeletePasskey() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api<null>(`/auth/passkeys/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['passkeys'] }),
+  })
+}
+
+/** Passwordless sign-in with Windows Hello, Touch ID or Face ID (FR-74). */
+export function usePasskeyLogin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => signInWithPasskey(),
+    onSuccess: (s) => switchSession(qc, s),
+  })
 }

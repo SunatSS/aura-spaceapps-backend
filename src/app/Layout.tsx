@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { NavLink, Outlet, useNavigate } from 'react-router'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { seesWholeCrew, useLogout } from '../features/auth/api.ts'
 import { ResetDemo } from '../features/auth/components/ResetDemo.tsx'
 import { roleLabel } from '../features/crew/api.ts'
@@ -114,7 +114,9 @@ function UserBox() {
     <div className="flex items-center gap-2 text-sm leading-5">
       <span>
         <span className="font-medium text-ink-muted">Signed in </span>
-        <span className="font-semibold">{me.name}</span>
+        <Link to="/account" className="font-semibold underline-offset-2 hover:underline" title="Account and passkeys">
+          {me.name}
+        </Link>
         <span className="text-ink-muted"> · {roleLabel[me.role]}</span>
       </span>
       <button
