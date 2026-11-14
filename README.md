@@ -44,6 +44,10 @@ as the only cue, 6:1 text contrast, mixed-case text, fixed-width numbers, top na
 an always-visible status area (MET/UTC, alerts, link to Earth), time labelled with its time
 system. No decorative graphics.
 
+## Use of AI
+
+The AURA team defined the concept, scope, indicators and scenarios and reviewed all results. Most of the code in this repository, its tests and documentation were written with the help of an AI coding assistant — **Claude (Anthropic)**. AI-assisted commits are marked with a `Co-Authored-By: Claude` line in the commit history. No AI-generated images, audio or video are used.
+
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).
