@@ -1,7 +1,7 @@
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { Indicator } from '../../../shared/api/catalog.ts'
 import type { Schemas } from '../../../shared/api/client.ts'
-import { formatNumber, thresholdsFor, unitLabel } from '../../../shared/lib/format.ts'
+import { formatNumber, limitArrow, thresholdsFor, unitLabel } from '../../../shared/lib/format.ts'
 import { alertLabel, alertClassOf } from '../../../shared/lib/status.ts'
 import { formatMET } from '../../../shared/lib/time.ts'
 import { useTokens } from '../../../shared/lib/useTokens.ts'
@@ -24,7 +24,8 @@ type Props = {
 
 const DAY = 86_400_000
 
-type Point = { t: number; value: number; status: Reading['status']; context: string }
+/** `dir`: deviation from the nominal range — '↑' above, '↓' below, '' inside (App. F F.4.3.1). */
+type Point = { t: number; value: number; status: Reading['status']; context: string; dir: '↑' | '↓' | '' }
 
 /**
  * Indicator history (App. F F.5.8): unique title above (set by the page), axis
@@ -34,7 +35,13 @@ type Point = { t: number; value: number; status: Reading['status']; context: str
 export function TrendChart({ ind, readings, activities, phases, missionStart, environment, from, to }: Props) {
   const tok = useTokens()
   const t = thresholdsFor(ind, environment)
-  const points: Point[] = readings.map((r) => ({ t: Date.parse(r.measuredAt), value: r.value, status: r.status, context: r.context }))
+  const points: Point[] = readings.map((r) => ({
+    t: Date.parse(r.measuredAt),
+    value: r.value,
+    status: r.status,
+    context: r.context,
+    dir: limitArrow(ind, r.value, r.environment),
+  }))
 
   const values = [...points.map((p) => p.value), t.nominal.min, t.nominal.max, t.caution.min, t.caution.max].filter((v): v is number => v !== null)
   const pad = Math.max((Math.max(...values) - Math.min(...values)) * 0.08, ind.step)
@@ -108,6 +115,7 @@ export function TrendChart({ ind, readings, activities, phases, missionStart, en
                   </div>
                   <div className="font-semibold text-ink">
                     {alertLabel[cls]}
+                    {p.dir === '↑' ? ' · above range' : p.dir === '↓' ? ' · below range' : ''}
                     {p.context === 'post_eva' ? ' · after EVA' : p.context === 'pre_eva' ? ' · before EVA' : ''}
                   </div>
                 </div>
@@ -120,7 +128,7 @@ export function TrendChart({ ind, readings, activities, phases, missionStart, en
             strokeWidth={1.5}
             isAnimationActive={false}
             dot={(props: { cx?: number; cy?: number; index?: number; payload?: Point }) => (
-              <Dot key={props.index} cx={props.cx} cy={props.cy} status={props.payload?.status} tok={tok} />
+              <Dot key={props.index} cx={props.cx} cy={props.cy} point={props.payload} tok={tok} />
             )}
           />
         </LineChart>
@@ -129,10 +137,18 @@ export function TrendChart({ ind, readings, activities, phases, missionStart, en
   )
 }
 
-/** Point shape doubles the colour cue: circle nominal, triangle caution, diamond warning. */
-function Dot({ cx, cy, status, tok }: { cx?: number; cy?: number; status?: Reading['status']; tok: ReturnType<typeof useTokens> }) {
-  if (cx === undefined || cy === undefined) return <g />
-  if (status === 'critical') return <path d={`M${cx} ${cy - 7}L${cx + 7} ${cy}L${cx} ${cy + 7}L${cx - 7} ${cy}Z`} fill={tok.warning} stroke={tok['surface-raised']} strokeWidth={1} />
-  if (status === 'caution') return <path d={`M${cx} ${cy - 7}L${cx + 7} ${cy + 5}H${cx - 7}Z`} fill={tok.caution} stroke={tok['surface-raised']} strokeWidth={1} />
+/**
+ * Point shape doubles the colour cue: circle nominal, triangle caution, diamond
+ * warning. Caution triangles point the way the value deviates (up = above the
+ * nominal range, down = below), matching the ↑/↓ arrows used next to values; the triangle itself is the Caution class shape.
+ */
+function Dot({ cx, cy, point, tok }: { cx?: number; cy?: number; point?: Point; tok: ReturnType<typeof useTokens> }) {
+  if (cx === undefined || cy === undefined || !point) return <g />
+  if (point.status === 'critical')
+    return <path d={`M${cx} ${cy - 7}L${cx + 7} ${cy}L${cx} ${cy + 7}L${cx - 7} ${cy}Z`} fill={tok.warning} stroke={tok['surface-raised']} strokeWidth={1} />
+  if (point.status === 'caution') {
+    const d = point.dir === '↓' ? `M${cx} ${cy + 7}L${cx + 7} ${cy - 5}H${cx - 7}Z` : `M${cx} ${cy - 7}L${cx + 7} ${cy + 5}H${cx - 7}Z`
+    return <path d={d} fill={tok.caution} stroke={tok['surface-raised']} strokeWidth={1} />
+  }
   return <circle cx={cx} cy={cy} r={3} fill={tok.ink} />
 }

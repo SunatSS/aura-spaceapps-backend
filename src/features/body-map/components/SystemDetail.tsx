@@ -115,7 +115,7 @@ function ReadingRow({ r, ind, missionStart }: { r: IndicatorResult; ind: Indicat
           <>
             {formatNumber(r.value)} <span className="font-normal text-ink-muted">{unitLabel(ind, r.unit)}</span>
             {arrow && (
-              <span className={clsx('ml-1', alertText[alert])} aria-label={arrow === '▲' ? 'above range' : 'below range'}>
+              <span className={clsx('ml-1', alertText[alert])} aria-label={arrow === '↑' ? 'above range' : 'below range'}>
                 {arrow}
               </span>
             )}

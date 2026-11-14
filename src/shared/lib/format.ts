@@ -10,13 +10,13 @@ export function formatNumber(v: number): string {
 
 /**
  * Out-of-limit direction for the coloured arrow after a value (F.4.3.1):
- * '▲' above the nominal range, '▼' below it, '' inside.
+ * '↑' above the nominal range, '↓' below it, '' inside.
  */
-export function limitArrow(ind: Indicator | undefined, value: number, environment: string): '▲' | '▼' | '' {
+export function limitArrow(ind: Indicator | undefined, value: number, environment: string): '↑' | '↓' | '' {
   if (!ind) return ''
   const t = thresholdsFor(ind, environment)
-  if (t.nominal.max !== null && value > t.nominal.max) return '▲'
-  if (t.nominal.min !== null && value < t.nominal.min) return '▼'
+  if (t.nominal.max !== null && value > t.nominal.max) return '↑'
+  if (t.nominal.min !== null && value < t.nominal.min) return '↓'
   return ''
 }
 

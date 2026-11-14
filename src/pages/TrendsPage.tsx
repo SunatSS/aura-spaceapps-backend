@@ -188,7 +188,13 @@ function Legend() {
         </>,
         'Reading (nominal)',
       )}
-      {item(<path d="M14 1 21 12H7Z" className="fill-caution" />, 'Caution reading')}
+      {item(
+        <>
+          <path d="M8 1 14 12H2Z" className="fill-caution" />
+          <path d="M20 13 26 2H14Z" className="fill-caution" />
+        </>,
+        'Caution reading — points up if above, down if below the nominal range',
+      )}
       {item(<path d="M14 0 21 7 14 14 7 7Z" className="fill-warning" />, 'Warning reading')}
       {item(<line x1="0" y1="7" x2="28" y2="7" className="stroke-caution-ink" strokeWidth="1.5" strokeDasharray="6 4" />, 'Nominal limit')}
       {item(<line x1="0" y1="7" x2="28" y2="7" className="stroke-warning-ink" strokeWidth="1.5" strokeDasharray="6 4" />, 'Warning limit')}

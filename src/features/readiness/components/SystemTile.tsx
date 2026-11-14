@@ -71,7 +71,7 @@ function Reading({ r, catalog, missionStart, reverse }: { r: IndicatorResult; ca
           <>
             {formatNumber(r.value)} <span className={clsx('font-normal', reverse ? 'text-on-alert' : 'text-ink-muted')}>{unitLabel(ind, r.unit)}</span>
             {arrow && (
-              <span className={clsx('ml-1', reverse ? 'text-on-alert' : alertText[alert])} aria-label={arrow === '▲' ? 'above range' : 'below range'}>
+              <span className={clsx('ml-1', reverse ? 'text-on-alert' : alertText[alert])} aria-label={arrow === '↑' ? 'above range' : 'below range'}>
                 {arrow}
               </span>
             )}

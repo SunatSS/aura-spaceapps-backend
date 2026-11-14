@@ -12,8 +12,8 @@ const bp = {
 
 describe('limitArrow', () => {
   it('points up above and down below the nominal range', () => {
-    expect(limitArrow(bp, 165, 'mars_surface')).toBe('▲')
-    expect(limitArrow(bp, 85, 'mars_surface')).toBe('▼')
+    expect(limitArrow(bp, 165, 'mars_surface')).toBe('↑')
+    expect(limitArrow(bp, 85, 'mars_surface')).toBe('↓')
     expect(limitArrow(bp, 118, 'mars_surface')).toBe('')
   })
   it('uses environment overrides', () => {

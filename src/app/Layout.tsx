@@ -82,7 +82,7 @@ function KeyInfo() {
         ) : aos ? (
           'AOS'
         ) : (
-          <span className="text-warning-ink">LOS ▼</span>
+          <span className="text-warning-ink">LOS</span>
         )}
       </span>
       {env && <Field k="Earth" v={formatDelay(env.commDelayMinS, env.commDelayMaxS)} />}
