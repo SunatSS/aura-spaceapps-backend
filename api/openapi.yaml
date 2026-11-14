@@ -1,0 +1,48 @@
+openapi: 3.1.0
+info:
+  title: AURA API
+  version: 0.1.0
+  description: |
+    Astronaut Universal Readiness Assessment — health monitoring API.
+    Source of truth for the backend/frontend contract. The frontend generates
+    TypeScript types from this file (`npm run gen:api` in aura-frontend).
+    Planned endpoints are listed in ../docs/REQUIREMENTS.md (section "API").
+servers:
+  - url: /api/v1
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Liveness and database check
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "503":
+          description: Service is degraded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status, db]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        db:
+          type: string
+          enum: [ok, error]
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message

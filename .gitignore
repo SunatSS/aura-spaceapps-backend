@@ -1,0 +1,18 @@
+# Build output
+/bin/
+/aura
+/aura.exe
+
+# Local SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Env
+.env
+
+# Editors / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
