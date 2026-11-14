@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Indicator } from '../api/catalog.ts'
-import { formatNumber, formatRange, limitArrow, unitLabel } from './format.ts'
+import { classify, formatNumber, formatRange, limitArrow, unitLabel, validateValue } from './format.ts'
 
 const bp = {
   code: 'bp_systolic',
@@ -26,6 +26,29 @@ describe('formatNumber', () => {
     expect(formatNumber(0.25)).toBe('0.25')
     expect(formatNumber(36.700000001)).toBe('36.7')
     expect(formatNumber(-3)).toBe('-3')
+  })
+})
+
+describe('classify', () => {
+  it('matches the backend bands, inclusive bounds', () => {
+    expect(classify(bp, 129, 'mars_surface')).toBe('nominal')
+    expect(classify(bp, 130, 'mars_surface')).toBe('caution')
+    expect(classify(bp, 159, 'mars_surface')).toBe('caution')
+    expect(classify(bp, 165, 'mars_surface')).toBe('critical')
+  })
+})
+
+describe('validateValue', () => {
+  const hr = { input: 'number', unit: 'bpm', min: 20, max: 250 } as unknown as Indicator
+  const mood = { input: 'scale', unit: 'score', min: 1, max: 5 } as unknown as Indicator
+  it('accepts empty and in-range values', () => {
+    expect(validateValue(hr, '')).toBe('')
+    expect(validateValue(hr, '72')).toBe('')
+  })
+  it('rejects impossible or malformed values', () => {
+    expect(validateValue(hr, '700')).toBe('Must be between 20 and 250 bpm.')
+    expect(validateValue(hr, 'abc')).toBe('Enter a number.')
+    expect(validateValue(mood, '3.5')).toBe('Must be a whole number.')
   })
 })
 

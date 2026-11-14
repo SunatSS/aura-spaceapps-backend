@@ -6,7 +6,7 @@
    Colour only conveys meaning (F.5.10); text contrast is 6:1+ everywhere.
    Deep Space is the app theme; Mission Paper is for print/slides
    (data-theme="mission-paper" on <html>). Change values in the brandbook first. */
-@theme {
+@theme static {
   --color-ground: #0b1120;
   --color-surface: #141c2e;
   --color-surface-raised: #1c2740;
