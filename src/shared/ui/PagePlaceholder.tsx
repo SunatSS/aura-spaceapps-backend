@@ -7,8 +7,8 @@ type Props = {
 export function PagePlaceholder({ title, description }: Props) {
   return (
     <section>
-      <h1 className="mb-2 text-2xl font-semibold">{title}</h1>
-      <p className="max-w-2xl text-slate-400">{description}</p>
+      <h1 className="mb-3 font-display text-[56px] leading-[0.95] font-bold tracking-[-0.01em] uppercase">{title}</h1>
+      <p className="max-w-2xl text-ink-muted">{description}</p>
     </section>
   )
 }

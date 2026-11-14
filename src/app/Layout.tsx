@@ -1,6 +1,8 @@
 import clsx from 'clsx'
 import { NavLink, Outlet } from 'react-router'
 import { useHealth } from '../shared/api/health.ts'
+import { AuraMark } from '../shared/ui/AuraMark.tsx'
+import { StatusBadge } from '../shared/ui/StatusBadge.tsx'
 
 const nav = [
   { to: '/', label: 'Readiness' },
@@ -12,10 +14,13 @@ const nav = [
 export function Layout() {
   return (
     <div className="flex h-full">
-      <aside className="flex w-56 flex-col gap-1 border-r border-space-700 bg-space-900 p-4">
-        <div className="mb-6">
-          <div className="text-xl font-bold tracking-widest">AURA</div>
-          <div className="text-xs text-slate-400">Astronaut Universal Readiness Assessment</div>
+      <aside className="flex w-60 flex-col gap-1 border-r border-line bg-surface p-4">
+        <div className="mb-8 flex items-center gap-3">
+          <AuraMark size={40} />
+          <div>
+            <div className="font-display text-3xl leading-none font-bold tracking-[0.08em]">AURA</div>
+            <div className="label mt-1 text-[10px] leading-3 text-ink-muted">Readiness assessment</div>
+          </div>
         </div>
         {nav.map((item) => (
           <NavLink
@@ -24,16 +29,17 @@ export function Layout() {
             end
             className={({ isActive }) =>
               clsx(
-                'rounded px-3 py-2 text-sm transition-colors',
-                isActive ? 'bg-space-700 text-white' : 'text-slate-300 hover:bg-space-800',
+                'rounded-md px-3 py-2 text-[15px] font-semibold transition-colors',
+                isActive ? 'bg-aura-blue text-on-primary' : 'text-ink-muted hover:bg-surface-raised hover:text-ink',
               )
             }
           >
             {item.label}
           </NavLink>
         ))}
-        <div className="mt-auto">
+        <div className="mt-auto flex flex-col gap-3">
           <BackendStatus />
+          <p className="text-xs leading-4 text-ink-muted">Prototype, not a medical device.</p>
         </div>
       </aside>
       <main className="flex-1 overflow-auto p-8">
@@ -45,16 +51,11 @@ export function Layout() {
 
 function BackendStatus() {
   const { data, isError, isPending } = useHealth()
-  const ok = data?.status === 'ok'
+  const status = isPending ? 'unknown' : data?.status === 'ok' && !isError ? 'nominal' : 'critical'
   return (
-    <div className="flex items-center gap-2 text-xs text-slate-400">
-      <span
-        className={clsx(
-          'size-2 rounded-full',
-          isPending ? 'bg-status-unknown' : ok && !isError ? 'bg-status-nominal' : 'bg-status-critical',
-        )}
-      />
-      {isPending ? 'Connecting…' : ok && !isError ? 'Backend online' : 'Backend offline'}
+    <div className="flex items-center justify-between">
+      <span className="label text-ink-muted">Link</span>
+      <StatusBadge status={status} quiet />
     </div>
   )
 }

@@ -1,17 +1,61 @@
 @import 'tailwindcss';
 
-/* Design tokens. Status colours are the core visual language of AURA:
-   every indicator, body system and the readiness score use exactly these. */
+/* AURA design tokens — mirror of the AURA Brandbook (tokens.json).
+   Deep Space is the app theme; Mission Paper (cream) is for print/slides:
+   set data-theme="mission-paper" on <html>. Change values in the brandbook first. */
 @theme {
-  --color-space-950: #05070f;
-  --color-space-900: #0b1020;
-  --color-space-800: #141b33;
-  --color-space-700: #1f2947;
+  --color-ground: #0b1120;
+  --color-surface: #141c2e;
+  --color-surface-raised: #1c2740;
+  --color-line: #2c3a57;
+  --color-line-strong: #5a6b8c;
+  --color-ink: #f2e8d5;
+  --color-ink-muted: #a9b3c6;
+  --color-aura-blue: #2b6cb0;
+  --color-on-primary: #ffffff;
+  --color-focus-ring: #f2b632;
 
-  --color-status-nominal: #22c55e;
-  --color-status-caution: #f59e0b;
-  --color-status-critical: #ef4444;
-  --color-status-unknown: #64748b;
+  /* Aura Spectrum — identity only, always all five together, never a status */
+  --color-spectrum-1: #2b7bc0;
+  --color-spectrum-2: #7fb539;
+  --color-spectrum-3: #f2b632;
+  --color-spectrum-4: #ec6f2d;
+  --color-spectrum-5: #d9406a;
+
+  /* Status fills (same in both themes); text on them is on-status */
+  --color-status-nominal: #4caf6e;
+  --color-status-caution: #f0a830;
+  --color-status-critical: #e5484d;
+  --color-status-unknown: #7d8799;
+  --color-on-status: #0b1120;
+  /* Status as text/strokes on ground */
+  --color-status-nominal-ink: #4caf6e;
+  --color-status-caution-ink: #f0a830;
+  --color-status-critical-ink: #e5484d;
+  --color-status-unknown-ink: #7d8799;
+
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-sans: 'Barlow', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 12px;
+  --radius-lg: 24px;
+}
+
+[data-theme='mission-paper'] {
+  --color-ground: #f4ecdf;
+  --color-surface: #fbf6ee;
+  --color-surface-raised: #ffffff;
+  --color-line: #d9cdb8;
+  --color-line-strong: #8c7f6a;
+  --color-ink: #1d1a16;
+  --color-ink-muted: #5c544a;
+  --color-focus-ring: #2b6cb0;
+  --color-status-nominal-ink: #1b6e37;
+  --color-status-caution-ink: #8a5a00;
+  --color-status-critical-ink: #b3261e;
+  --color-status-unknown-ink: #5d6675;
 }
 
 html,
@@ -21,5 +65,27 @@ body,
 }
 
 body {
-  @apply bg-space-950 text-slate-100 antialiased;
+  @apply bg-ground font-sans text-ink antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Micro-label: SYS-01 · CARDIOVASCULAR */
+@utility label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }
