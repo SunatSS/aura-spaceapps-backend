@@ -49,3 +49,26 @@ persistent disk: the demo data is re-seeded on every start.
 | Docker | `docker build -t aura-spaceapps-backend .` |
 
 Configuration: see `.env.example` (all variables optional).
+
+Live demo: https://aura-spaceapps.onrender.com
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).
+
+## Credits and third-party licenses
+
+| Component | License |
+|---|---|
+| [modernc.org/sqlite](https://gitlab.com/cznic/sqlite) (pure-Go SQLite) and its `modernc.org/*` dependencies | BSD 3-Clause |
+| [go.yaml.in/yaml/v3](https://github.com/yaml/go-yaml) | MIT and Apache 2.0 |
+| Go standard library | BSD 3-Clause |
+
+Sources used for the health content (`internal/catalog/catalog.yaml`):
+
+- NASA Human Research Program — [5 Hazards of Human Spaceflight](https://www.nasa.gov/hrp/hazards/), [Risks of Human Spaceflight](https://www.nasa.gov/hrp/risks/), [Ongoing HRP Research](https://www.nasa.gov/hrp/ongoing-hrp-research/) (incl. Standard Measures and ARCHeR).
+- Canadian Space Agency — [Monitoring radiation for astronaut health](https://www.asc-csa.gc.ca/eng/news/articles/2026/2026-02-26-monitoring-radiation-astronaut-health.asp), [Why do we conduct science experiments in space?](https://www.asc-csa.gc.ca/eng/iss/science/why-do-we-conduct-science-experiments-in-space.asp).
+- NASA, [NASA-STD-3001 Vol. 2, Appendix F: Display Standard](https://www.nasa.gov/reference/appendix-f-vol-2/) — alert classes and time formats used by the API.
+- Indicator thresholds are illustrative general clinical references (AHA blood-pressure categories, ADA hypoglycemia levels, adult sleep recommendations); the NASA resources define which risks matter, not numeric limits.
+
+AURA is a NASA Space Apps Challenge 2026 project; it is not endorsed by NASA and uses no NASA insignia or logotype.
