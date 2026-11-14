@@ -157,6 +157,100 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/openapi.yaml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** This contract (Swagger UI at /api/docs/) */
+        get: operations["getOpenAPI"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/astronauts/{id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        /** Known conditions, baselines, personal ranges and weights (FR-6, FR-24) */
+        get: operations["getProfile"];
+        /** Set particularities — flight surgeon only; listed indicators and weights are replaced */
+        put: operations["updateProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/astronauts/{id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        /** Today's tasks, overdue reminders, streak and badges (FR-40…FR-43) */
+        get: operations["getTasks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/astronauts/{id}/tasks/{code}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+                code: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a manual task (e.g. exercise) done today — own tasks only */
+        post: operations["completeTask"];
+        /** Undo today's mark */
+        delete: operations["uncompleteTask"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/demo/environment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a new mission phase in another environment now (demo, FR-4) */
+        post: operations["switchEnvironment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/astronauts": {
         parameters: {
             query?: never;
@@ -566,6 +660,25 @@ export interface components {
             systems: components["schemas"]["BodySystem"][];
             indicators: components["schemas"]["Indicator"][];
             vehicleParameters: components["schemas"]["VehicleParameter"][];
+            countermeasures: components["schemas"]["Countermeasure"][];
+            schedule: components["schemas"]["ScheduleItem"][];
+        };
+        Countermeasure: {
+            code: string;
+            title: string;
+            how: string;
+            /** @description NASA HRP risk codes it lowers */
+            risks: string[];
+        };
+        ScheduleItem: {
+            code: string;
+            title: string;
+            /** @enum {string} */
+            every: "daily" | "weekly";
+            fromHour: number;
+            dueHour: number;
+            indicators: string[] | null;
+            manual: boolean;
         };
         VehicleParameter: {
             code: string;
@@ -652,6 +765,8 @@ export interface components {
             step: number;
             /** @description A reading older than this counts as unknown */
             freshnessHours: number;
+            /** @description Slow drift toward a limit is reported while still nominal */
+            trend: boolean;
             hazards: string[];
             risks: string[];
             thresholds: components["schemas"]["Thresholds"];
@@ -771,6 +886,11 @@ export interface components {
             /** Format: date-time */
             measuredAt: string | null;
             environment: string;
+            nominal: components["schemas"]["Range"];
+            /** @description A personal range set by the flight surgeon applies */
+            personal: boolean;
+            /** @description Preflight value */
+            baseline: number | null;
         };
         SystemResult: {
             code: string;
@@ -797,7 +917,7 @@ export interface components {
         Recommendation: {
             id: string;
             /** @enum {string} */
-            rule: "indicator_status" | "repeated_critical" | "sleep_debt" | "post_eva_hypoxia" | "low_mood_streak" | "cabin_air";
+            rule: "indicator_status" | "repeated_critical" | "sleep_debt" | "post_eva_hypoxia" | "low_mood_streak" | "cabin_air" | "trend";
             indicator: string;
             system: string;
             severity: components["schemas"]["Status"];
@@ -871,6 +991,12 @@ export interface components {
             recommendations: components["schemas"]["Recommendation"][];
             /** @description Last 7 days */
             trends: components["schemas"]["TrendSeries"][];
+            tasks: {
+                done: number;
+                total: number;
+                overdue: number;
+                streak: number;
+            };
         };
         CrewOverview: {
             /** Format: date-time */
@@ -1100,6 +1226,58 @@ export interface components {
             }[];
             excludeCredentialIds: string[];
             timeout: number;
+        };
+        PersonalIndicator: {
+            /** @description Preflight value */
+            baseline?: number | null;
+            /** @description Personal ranges; null = standard catalog ranges */
+            thresholds?: components["schemas"]["Thresholds"] | null;
+            note?: string;
+        };
+        Profile: {
+            conditions: string;
+            indicators: {
+                [key: string]: components["schemas"]["PersonalIndicator"];
+            };
+            /** @description System code → weight in the Readiness Score */
+            weights: {
+                [key: string]: number;
+            };
+        };
+        Task: {
+            code: string;
+            title: string;
+            /** @enum {string} */
+            every: "daily" | "weekly";
+            manual: boolean;
+            indicators: string[];
+            /** @description Indicators still without a reading in the window */
+            missing: string[];
+            /** Format: date-time */
+            due: string;
+            done: boolean;
+            /** Format: date-time */
+            doneAt: string | null;
+            overdue: boolean;
+        };
+        Badge: {
+            code: string;
+            title: string;
+            description: string;
+            /** Format: date-time */
+            earnedAt: string;
+        };
+        Tasks: {
+            /** @description Mission-UTC day */
+            day: string;
+            tasks: components["schemas"]["Task"][];
+            done: number;
+            total: number;
+            overdue: number;
+            /** @description Days in a row with every daily task done */
+            streak: number;
+            bestStreak: number;
+            badges: components["schemas"]["Badge"][];
         };
     };
     responses: {
@@ -1352,6 +1530,199 @@ export interface operations {
             };
             400: components["responses"]["Error"];
             401: components["responses"]["Error"];
+        };
+    };
+    getOpenAPI: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OpenAPI 3.1 document */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/yaml": string;
+                };
+            };
+        };
+    };
+    getProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    updateProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    conditions?: string;
+                    indicators?: {
+                        [key: string]: components["schemas"]["PersonalIndicator"];
+                    };
+                    /** @description 0 removes the personal weight */
+                    weights?: {
+                        [key: string]: number;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description The updated profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    getTasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tasks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tasks"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    completeTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tasks after the change */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tasks"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    uncompleteTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tasks after the change */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tasks"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    switchEnvironment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    environment: components["schemas"]["EnvironmentCode"];
+                };
+            };
+        };
+        responses: {
+            /** @description The mission after the switch */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentMission"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     listAstronauts: {

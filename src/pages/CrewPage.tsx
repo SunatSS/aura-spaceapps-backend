@@ -73,6 +73,7 @@ export function CrewPage() {
             <h2 id="status-title" className="text-2xl leading-8 font-semibold">
               Crew status
             </h2>
+            <TeamProgress members={members} />
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {members.map((m) => (
                 <MemberCard key={m.astronaut.id} member={m} catalog={catalog.data} onOpen={(to) => open(m.astronaut.id, to)} />
@@ -152,7 +153,7 @@ function MemberCard({ member: m, catalog, onOpen }: { member: CrewMember; catalo
   return (
     <article
       className={clsx(
-        'flex flex-col gap-3 rounded-md border-[1.5px] bg-surface-raised p-4',
+        'flex flex-col gap-3 rounded-md border-[1.5px] bg-surface-raised p-4 transition-colors duration-200 motion-reduce:transition-none',
         cls === 'warning' ? 'border-warning-ink' : cls === 'caution' ? 'border-caution-ink' : 'border-line-strong',
       )}
       aria-labelledby={`member-${m.astronaut.id}`}
@@ -174,6 +175,12 @@ function MemberCard({ member: m, catalog, onOpen }: { member: CrewMember; catalo
           <span className={m.warnings > 0 ? 'text-warning-ink' : undefined}>W {m.warnings}</span>
           {' · '}
           <span className={m.cautions > 0 ? 'text-caution-ink' : undefined}>C {m.cautions}</span>
+        </dd>
+        <dt className="font-medium text-ink-muted">Today</dt>
+        <dd className="font-mono">
+          {m.tasks.done}/{m.tasks.total} tasks
+          {m.tasks.overdue > 0 && <span className="text-advisory-ink"> · {m.tasks.overdue} overdue</span>}
+          <span className="text-ink-muted"> · streak {m.tasks.streak}</span>
         </dd>
         <dt className="font-medium text-ink-muted">Fresh data</dt>
         <dd className="font-mono">
@@ -210,6 +217,23 @@ function MemberCard({ member: m, catalog, onOpen }: { member: CrewMember; catalo
         </Button>
       </div>
     </article>
+  )
+}
+
+/** Team progress today (FR-44): scheduled tasks across the crew. */
+function TeamProgress({ members }: { members: CrewMember[] }) {
+  const done = members.reduce((n, m) => n + m.tasks.done, 0)
+  const total = members.reduce((n, m) => n + m.tasks.total, 0)
+  const overdue = members.reduce((n, m) => n + m.tasks.overdue, 0)
+  const shortest = members.length ? Math.min(...members.map((m) => m.tasks.streak)) : 0
+  return (
+    <p className="font-mono text-sm">
+      <span className="font-sans font-medium text-ink-muted">Team today </span>
+      {done}/{total} tasks
+      {overdue > 0 && <span className="text-advisory-ink"> · {overdue} overdue</span>}
+      <span className="text-ink-muted"> · whole-crew streak </span>
+      {shortest} {shortest === 1 ? 'day' : 'days'}
+    </p>
   )
 }
 

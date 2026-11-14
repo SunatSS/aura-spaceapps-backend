@@ -17,7 +17,7 @@ export function StatusBadge({ alert, quiet = false, onFill = false, className }:
   return (
     <span
       className={clsx(
-        'inline-flex h-6 items-center gap-1 text-sm leading-5 font-semibold',
+        'inline-flex h-6 items-center gap-1 text-sm leading-5 font-semibold transition-colors duration-200 motion-reduce:transition-none',
         filled && [alertBg[alert], 'rounded-sm px-2 text-on-alert'],
         !filled && !quiet && 'rounded-sm border-[1.5px] border-line-strong px-2 text-ink',
         quiet && (onFill ? 'text-on-alert' : alertText[alert]),

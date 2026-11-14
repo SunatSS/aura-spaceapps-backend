@@ -63,3 +63,23 @@ export function formatRange(ind: Indicator, environment: string): string {
   if (max !== null) return `≤ ${formatNumber(max)} ${unit}`
   return 'any'
 }
+
+type Bounds = { min?: number | null; max?: number | null }
+
+/** Arrow for a value against an explicit range (e.g. a personal range from the server). */
+export function arrowFor(range: Bounds, value: number): '↑' | '↓' | '' {
+  if (range.max !== null && range.max !== undefined && value > range.max) return '↑'
+  if (range.min !== null && range.min !== undefined && value < range.min) return '↓'
+  return ''
+}
+
+/** An explicit range as text with the indicator's unit: "42–95 bpm", "≥ 95 %". */
+export function rangeLabel(range: Bounds, ind: Indicator | undefined): string {
+  const unit = ind ? (ind.input === 'scale' ? `/${ind.max}` : ind.unit) : ''
+  const { min, max } = range
+  const has = (v: number | null | undefined): v is number => v !== null && v !== undefined
+  if (has(min) && has(max)) return min === max ? `${formatNumber(min)} ${unit}` : `${formatNumber(min)}–${formatNumber(max)} ${unit}`
+  if (has(min)) return `≥ ${formatNumber(min)} ${unit}`
+  if (has(max)) return `≤ ${formatNumber(max)} ${unit}`
+  return 'any'
+}

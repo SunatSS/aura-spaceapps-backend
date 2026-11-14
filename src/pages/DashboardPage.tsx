@@ -12,10 +12,11 @@ import { SystemTile } from '../features/readiness/components/SystemTile.tsx'
 import { useCatalog } from '../shared/api/catalog.ts'
 import { useMission } from '../shared/api/mission.ts'
 import { Notice } from '../shared/ui/Notice.tsx'
+import { TodayPanel } from '../features/tasks/components/TodayPanel.tsx'
 
 /** Readiness display: score, recommendations, body systems (App. F: answer first, details on demand). */
 export function DashboardPage() {
-  const { current, isError: crewError } = useCurrentAstronaut()
+  const { me, current, isError: crewError } = useCurrentAstronaut()
   const catalog = useCatalog()
   const mission = useMission()
   const readiness = useReadiness(current?.id)
@@ -41,7 +42,7 @@ export function DashboardPage() {
         </p>
       </header>
 
-      <Legend sections={['classes', 'values', 'tiles', 'score', 'recommendations', 'statusbar']} />
+      <Legend sections={['classes', 'values', 'tiles', 'score', 'recommendations', 'tasks', 'statusbar']} />
 
       {error && <Notice alert="warning">Cannot load data from the AURA server. Check the link status in the top bar.</Notice>}
 
@@ -68,6 +69,8 @@ export function DashboardPage() {
               )}
             </section>
           </div>
+
+          {current && <TodayPanel astronautId={current.id} canMark={current.id === me.id} catalog={catalog.data} missionStart={missionStart} />}
 
           <section aria-labelledby="systems-title" className="flex flex-col gap-4">
             <h2 id="systems-title" className="text-2xl leading-8 font-semibold">

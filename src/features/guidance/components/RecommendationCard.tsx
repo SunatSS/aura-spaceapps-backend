@@ -15,7 +15,7 @@ type Props = {
 /** What to do, why (Basis — App. F F.6.2), when to re-check, and whether to report to the flight surgeon. */
 export function RecommendationCard({ rec, guidance, acknowledged, onAcknowledge }: Props) {
   return (
-    <article className={clsx('rounded-md border-[1.5px] border-line bg-surface-raised p-6', acknowledged && 'opacity-70')}>
+    <article className={clsx('rounded-md border-[1.5px] border-line bg-surface-raised p-6 transition-colors duration-200 motion-reduce:transition-none', acknowledged && 'opacity-70')}>
       <div className="flex flex-wrap items-center gap-2">
         <StatusBadge alert={alertClassOf[rec.severity]} />
         {rec.escalate && (

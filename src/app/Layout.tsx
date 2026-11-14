@@ -2,6 +2,7 @@ import clsx from 'clsx'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { seesWholeCrew, useLogout } from '../features/auth/api.ts'
 import { ResetDemo } from '../features/auth/components/ResetDemo.tsx'
+import { EnvironmentSwitch } from '../features/demo/EnvironmentSwitch.tsx'
 import { roleLabel } from '../features/crew/api.ts'
 import { AstronautSelect } from '../features/crew/components/AstronautSelect.tsx'
 import { useCurrentAstronaut } from '../features/crew/context.ts'
@@ -22,6 +23,7 @@ function navFor(role: Parameters<typeof seesWholeCrew>[0]): NavItem[] {
     ...(role !== 'flight_surgeon' ? [{ to: '/log', label: 'Log' }] : []),
     { to: '/trends', label: 'Trends' },
     { to: '/report', label: 'Report' },
+    { to: '/profile', label: 'Profile' },
     { to: '/vehicle', label: 'Vehicle' },
     { to: '/supplies', label: 'Med supplies' },
   ]
@@ -65,7 +67,13 @@ export function Layout() {
       </main>
       <footer className="flex flex-none flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line px-4 py-2 text-sm leading-5 text-ink-muted">
         <span>Prototype for NASA Space Apps Challenge 2026 — not a medical device, not endorsed by NASA.</span>
-        <ResetDemo onDone={() => void navigate('/')} />
+        <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <a href="/api/docs/" target="_blank" rel="noreferrer" className="font-semibold text-ink underline underline-offset-2">
+            API docs
+          </a>
+          <EnvironmentSwitch />
+          <ResetDemo onDone={() => void navigate('/')} />
+        </span>
       </footer>
     </div>
   )

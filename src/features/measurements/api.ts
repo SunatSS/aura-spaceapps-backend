@@ -37,9 +37,10 @@ export function useCreateMeasurements(astronautId: number | undefined) {
         body: JSON.stringify({ measurements }),
       }).then((r) => r.measurements),
     onSuccess: () => {
-      for (const key of ['readiness', 'guidance', 'measurements']) {
+      for (const key of ['readiness', 'guidance', 'measurements', 'tasks', 'report']) {
         void qc.invalidateQueries({ queryKey: [key, astronautId] })
       }
+      void qc.invalidateQueries({ queryKey: ['crew-overview'] })
     },
   })
 }

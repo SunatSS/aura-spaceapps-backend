@@ -19,7 +19,8 @@ import { Notice } from '../shared/ui/Notice.tsx'
 import { StatusBadge } from '../shared/ui/StatusBadge.tsx'
 
 const VITALS = ['heart_rate', 'bp_systolic', 'bp_diastolic', 'spo2', 'body_temp', 'glucose']
-const CHECKIN = ['sleep_hours', 'mood', 'stress', 'headache']
+const CHECKIN = ['sleep_hours', 'mood', 'stress', 'headache', 'exercise_minutes', 'water_intake']
+const OTHER = ['radiation_dose', 'body_mass_change', 'vision_change']
 const CONTEXTS = [
   { value: '', label: 'Routine' },
   { value: 'pre_eva', label: 'Before EVA' },
@@ -171,6 +172,13 @@ export function LogPage() {
               Daily check-in
             </h2>
             {fields(CHECKIN)}
+          </section>
+
+          <section aria-labelledby="other-title" className="rounded-lg border-[1.5px] border-line bg-surface-raised px-6 py-2">
+            <h2 id="other-title" className="pt-4 text-2xl leading-8 font-semibold">
+              Dosimeter and weekly checks
+            </h2>
+            {fields(OTHER)}
           </section>
 
           <div className="flex flex-wrap items-center gap-3">

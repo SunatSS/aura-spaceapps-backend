@@ -5,6 +5,7 @@ import { CrewPage } from '../pages/CrewPage.tsx'
 import { DashboardPage } from '../pages/DashboardPage.tsx'
 import { LogPage } from '../pages/LogPage.tsx'
 import { NotFoundPage, RouteErrorPage } from '../pages/NotFoundPage.tsx'
+import { ProfilePage } from '../pages/ProfilePage.tsx'
 import { ReportPage } from '../pages/ReportPage.tsx'
 import { SuppliesPage } from '../pages/SuppliesPage.tsx'
 import { VehiclePage } from '../pages/VehiclePage.tsx'
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
           { path: 'report', element: <ReportPage /> },
           { path: 'vehicle', element: <VehiclePage /> },
           { path: 'account', element: <AccountPage /> },
+          { path: 'profile', element: <ProfilePage /> },
           { path: 'supplies', element: <SuppliesPage /> },
           // Charts (Recharts) load only when Trends is opened.
           { path: 'trends', lazy: async () => ({ Component: (await import('../pages/TrendsPage.tsx')).TrendsPage }) },

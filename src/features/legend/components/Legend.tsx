@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react'
 import type { AlertClass } from '../../../shared/lib/status.ts'
 import { StatusBadge } from '../../../shared/ui/StatusBadge.tsx'
 
-export type LegendSection = 'classes' | 'values' | 'tiles' | 'zones' | 'crew' | 'vehicle' | 'supplies' | 'score' | 'recommendations' | 'statusbar'
+export type LegendSection = 'classes' | 'values' | 'tiles' | 'zones' | 'crew' | 'vehicle' | 'supplies' | 'tasks' | 'profile' | 'score' | 'recommendations' | 'statusbar'
 
 type Props = {
   /** Which parts are relevant on this display, in display order. */
@@ -173,6 +173,22 @@ const SECTIONS: Record<LegendSection, ReactNode> = {
       <Row sample={badge('advisory')}>Inventory count due (not counted for 30 days).</Row>
       <Row sample={mono('4 strip/day')}>Average use over the last 30 days, the basis of the forecast.</Row>
       <Row sample={<span className="text-sm font-semibold">Dispose</span>}>Write off expired stock; asks for confirmation and cannot be undone.</Row>
+    </Block>
+  ),
+  tasks: (
+    <Block title="Today">
+      <Row sample={mono('☑')}>Done: reading tasks tick themselves when the readings are logged.</Row>
+      <Row sample={mono('☐')}>Still to do; manual tasks such as exercise have a «Mark done» button.</Row>
+      <Row sample={badge('advisory')}>Overdue: a reminder, not a health alert.</Row>
+      <Row sample={mono('streak 12 days')}>Days in a row with every daily task done; today does not break it until the day is over.</Row>
+    </Block>
+  ),
+  profile: (
+    <Block title="Profile">
+      <Row sample={mono('42–95 bpm')}>Personal range set by the flight surgeon; it replaces the standard range for this member.</Row>
+      <Row sample={<span className="text-xs font-semibold">personal</span>}>Marks a reading judged against a personal range.</Row>
+      <Row sample={mono('baseline 56')}>Preflight value, for comparison.</Row>
+      <Row sample={mono('1.5')}>Weight of a body system in this member's Readiness Score (standard 1).</Row>
     </Block>
   ),
   score: (

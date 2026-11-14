@@ -2,7 +2,7 @@ import clsx from 'clsx'
 import type { ReactNode } from 'react'
 import type { Catalog, Indicator } from '../../../shared/api/catalog.ts'
 import type { Schemas } from '../../../shared/api/client.ts'
-import { formatNumber, formatRange, limitArrow, unitLabel } from '../../../shared/lib/format.ts'
+import { arrowFor, formatNumber, rangeLabel, unitLabel } from '../../../shared/lib/format.ts'
 import { alertClassOf, alertText } from '../../../shared/lib/status.ts'
 import { formatMET } from '../../../shared/lib/time.ts'
 import { StatusBadge } from '../../../shared/ui/StatusBadge.tsx'
@@ -24,6 +24,8 @@ export function SystemDetail({ sysCode, system, catalog, missionStart, recommend
   const meta = catalog.systems.find((s) => s.code === system.code)
   const unavailable = system.indicators.length === 0
   const risks = (meta?.risks ?? []).map((code) => catalog.risks.find((r) => r.code === code)).filter((r) => r !== undefined)
+  // Countermeasure library (FR-34): what protects against this system's risks.
+  const countermeasures = catalog.countermeasures.filter((cm) => cm.risks.some((r) => meta?.risks.includes(r)))
 
   return (
     <section aria-labelledby="system-title" className="flex flex-col gap-6 rounded-lg border-[1.5px] border-line bg-surface-raised p-6">
@@ -92,6 +94,20 @@ export function SystemDetail({ sysCode, system, catalog, missionStart, recommend
         <p className="text-sm leading-5 text-ink-muted">Source: NASA Human Research Program — Risks of Human Spaceflight.</p>
       </div>
 
+      {countermeasures.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h3 className="text-lg leading-[26px] font-semibold">Countermeasures</h3>
+          <ul className="flex flex-col gap-2">
+            {countermeasures.map((cm) => (
+              <li key={cm.code}>
+                <span className="font-semibold">{cm.title}</span>
+                <p className="text-sm leading-5 text-ink-muted">{cm.how}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="flex flex-col gap-3">
         <h3 className="text-lg leading-[26px] font-semibold">Recommendations</h3>
         {recommendations}
@@ -102,7 +118,7 @@ export function SystemDetail({ sysCode, system, catalog, missionStart, recommend
 
 function ReadingRow({ r, ind, missionStart }: { r: IndicatorResult; ind: Indicator | undefined; missionStart: Date | undefined }) {
   const alert = alertClassOf[r.status]
-  const arrow = r.value !== null && r.fresh ? limitArrow(ind, r.value, r.environment) : ''
+  const arrow = r.value !== null && r.fresh ? arrowFor(r.nominal, r.value) : ''
   return (
     <tr className="border-b border-line last:border-0">
       <th scope="row" className="py-2 pr-4 font-medium">
@@ -123,7 +139,11 @@ function ReadingRow({ r, ind, missionStart }: { r: IndicatorResult; ind: Indicat
         )}
         {!r.fresh && <span className="ml-2 font-sans text-sm font-semibold">Stale</span>}
       </td>
-      <td className="py-2 pr-4 font-mono text-sm whitespace-nowrap text-ink-muted">{ind ? formatRange(ind, r.environment) : '—'}</td>
+      <td className="py-2 pr-4 font-mono text-sm whitespace-nowrap text-ink-muted">
+        {rangeLabel(r.nominal, ind)}
+        {r.personal && <span className="ml-1 font-sans text-xs font-semibold text-ink">personal</span>}
+        {r.baseline !== null && <span className="block font-sans text-xs">baseline {formatNumber(r.baseline)}</span>}
+      </td>
       <td className="py-2 font-mono text-sm whitespace-nowrap text-ink-muted">
         {r.measuredAt && missionStart ? `MET ${formatMET(missionStart, new Date(r.measuredAt)).slice(0, -3)}` : '—'}
       </td>

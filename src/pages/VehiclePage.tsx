@@ -89,7 +89,7 @@ function ModuleSection({ module: m, params, history, start, here }: { module: Ve
     <section
       aria-labelledby={`mod-${m.code}`}
       className={clsx(
-        'flex flex-col gap-3 rounded-lg border-[1.5px] bg-surface-raised p-6',
+        'flex flex-col gap-3 rounded-lg border-[1.5px] bg-surface-raised p-6 transition-colors duration-200 motion-reduce:transition-none',
         cls === 'warning' ? 'border-warning-ink' : cls === 'caution' ? 'border-caution-ink' : cls === 'stale' ? 'border-dashed border-stale-ink' : 'border-line',
       )}
     >

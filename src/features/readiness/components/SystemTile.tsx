@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import type { Catalog } from '../../../shared/api/catalog.ts'
-import { formatNumber, limitArrow, unitLabel } from '../../../shared/lib/format.ts'
+import { arrowFor, formatNumber, unitLabel } from '../../../shared/lib/format.ts'
 import { alertClassOf, alertText } from '../../../shared/lib/status.ts'
 import { formatMET } from '../../../shared/lib/time.ts'
 import { StatusBadge } from '../../../shared/ui/StatusBadge.tsx'
@@ -27,7 +27,7 @@ export function SystemTile({ code, system, catalog, missionStart }: Props) {
   return (
     <article
       className={clsx(
-        'flex min-h-37 flex-col gap-2 rounded-md border-[1.5px] p-4',
+        'flex min-h-37 flex-col gap-2 rounded-md border-[1.5px] p-4 transition-colors duration-200 motion-reduce:transition-none',
         reverse ? 'border-warning bg-warning text-on-alert' : 'bg-surface-raised',
         !reverse && alert === 'caution' && 'border-caution-ink',
         !reverse && alert === 'nominal' && 'border-line-strong',
@@ -60,7 +60,7 @@ export function SystemTile({ code, system, catalog, missionStart }: Props) {
 function Reading({ r, catalog, missionStart, reverse }: { r: IndicatorResult; catalog: Catalog; missionStart: Date | undefined; reverse: boolean }) {
   const ind = catalog.indicators.find((i) => i.code === r.code)
   const alert = alertClassOf[r.status]
-  const arrow = r.value !== null && r.fresh ? limitArrow(ind, r.value, r.environment) : ''
+  const arrow = r.value !== null && r.fresh ? arrowFor(r.nominal, r.value) : ''
   return (
     <>
       <dt className={clsx('text-sm leading-6 font-medium', reverse ? 'text-on-alert' : 'text-ink-muted')}>{ind?.shortName ?? r.code}</dt>
