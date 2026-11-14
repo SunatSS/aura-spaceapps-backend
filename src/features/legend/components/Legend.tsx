@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react'
 import type { AlertClass } from '../../../shared/lib/status.ts'
 import { StatusBadge } from '../../../shared/ui/StatusBadge.tsx'
 
-export type LegendSection = 'classes' | 'values' | 'tiles' | 'zones' | 'crew' | 'score' | 'recommendations' | 'statusbar'
+export type LegendSection = 'classes' | 'values' | 'tiles' | 'zones' | 'crew' | 'vehicle' | 'supplies' | 'score' | 'recommendations' | 'statusbar'
 
 type Props = {
   /** Which parts are relevant on this display, in display order. */
@@ -155,6 +155,24 @@ const SECTIONS: Record<LegendSection, ReactNode> = {
         7-day history: dashed lines are the nominal limits, the dot is the latest reading; triangles and diamonds mark Caution and Warning readings.
       </Row>
       <Row sample={mono('9/9')}>Fresh data: indicators with a reading inside their freshness window.</Row>
+    </Block>
+  ),
+  vehicle: (
+    <Block title="Vehicle">
+      <Row sample={mono(<>3.8 <span className="font-normal text-ink-muted">mmHg</span> <span className="text-caution-ink">↑</span></>)}>Life-support reading above its nominal limit; same classes and arrows as health data.</Row>
+      <Row sample={<Swatch className="border-caution-ink bg-surface-raised" />}>Module border: its worst parameter. Everyone in that module gets the advice.</Row>
+      <Row sample={mono('22.5 °C', 'text-stale-ink')}>No telemetry for over 4 hours: Stale.</Row>
+      <Row sample={mono('ppCO₂')}>Carbon dioxide partial pressure; above 3 mmHg it causes headaches and poor sleep.</Row>
+      <Row sample={mono('µGy/h')}>Radiation dose rate from the module dosimeter.</Row>
+    </Block>
+  ),
+  supplies: (
+    <Block title="Med supplies">
+      <Row sample={badge('warning')}>Out of stock or expired.</Row>
+      <Row sample={badge('caution')}>Below minimum, expires within 30 days, count differs from the record, or runs out before the mission ends.</Row>
+      <Row sample={badge('advisory')}>Inventory count due (not counted for 30 days).</Row>
+      <Row sample={mono('4 strip/day')}>Average use over the last 30 days, the basis of the forecast.</Row>
+      <Row sample={<span className="text-sm font-semibold">Dispose</span>}>Write off expired stock; asks for confirmation and cannot be undone.</Row>
     </Block>
   ),
   score: (

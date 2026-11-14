@@ -5,6 +5,7 @@ import { Link } from 'react-router'
 import { roleLabel } from '../features/crew/api.ts'
 import { useCurrentAstronaut } from '../features/crew/context.ts'
 import { useCreateMeasurements, type MeasurementView, type NewMeasurement } from '../features/measurements/api.ts'
+import { useReadiness } from '../features/readiness/api.ts'
 import { MeasurementField } from '../features/measurements/components/MeasurementField.tsx'
 import { useCatalog, type Indicator } from '../shared/api/catalog.ts'
 import { ApiError } from '../shared/api/client.ts'
@@ -18,7 +19,7 @@ import { Notice } from '../shared/ui/Notice.tsx'
 import { StatusBadge } from '../shared/ui/StatusBadge.tsx'
 
 const VITALS = ['heart_rate', 'bp_systolic', 'bp_diastolic', 'spo2', 'body_temp', 'glucose']
-const CHECKIN = ['sleep_hours', 'mood', 'stress']
+const CHECKIN = ['sleep_hours', 'mood', 'stress', 'headache']
 const CONTEXTS = [
   { value: '', label: 'Routine' },
   { value: 'pre_eva', label: 'Before EVA' },
@@ -35,6 +36,9 @@ export function LogPage() {
   const now = useNow()
   const save = useCreateMeasurements(current?.id)
   const [values, setValues] = useState<Record<string, string>>({})
+  // Fields filled by the simulated sensors (FR-15); editing one makes it manual again.
+  const [fromDevice, setFromDevice] = useState<Set<string>>(new Set())
+  const readiness = useReadiness(own ? current?.id : undefined)
   const [context, setContext] = useState<NewMeasurement['context']>('')
   const [saved, setSaved] = useState<MeasurementView[] | null>(null)
 
@@ -47,20 +51,53 @@ export function LogPage() {
   })
 
   const submit = () => {
-    const batch: NewMeasurement[] = filled.map(([indicator, v]) => ({ indicator, value: Number(v), context }))
+    const batch: NewMeasurement[] = filled.map(([indicator, v]) => ({
+      indicator,
+      value: Number(v),
+      context,
+      source: fromDevice.has(indicator) ? 'device' : '',
+    }))
     save.mutate(batch, {
       onSuccess: (created) => {
         setSaved(created)
         setValues({})
+        setFromDevice(new Set())
       },
     })
+  }
+
+  /** Simulated sensor read: the last value with a little noise, or mid-nominal if none. */
+  const readDevices = () => {
+    const latest = new Map((readiness.data?.systems ?? []).flatMap((sys) => sys.indicators).map((i) => [i.code, i.value]))
+    const next: Record<string, string> = {}
+    for (const code of VITALS) {
+      const ind = byCode.get(code)
+      if (!ind) continue
+      const { min, max } = ind.thresholds.nominal
+      const mid = min !== null && max !== null ? (min + max) / 2 : (min ?? max ?? (ind.min + ind.max) / 2)
+      const base = latest.get(code) ?? mid
+      const jitter = (Math.random() - 0.5) * 4 * ind.step
+      const v = Math.min(ind.max, Math.max(ind.min, Math.round((base + jitter) / ind.step) * ind.step))
+      next[code] = String(Math.round(v * 100) / 100)
+    }
+    setValues((s) => ({ ...s, ...next }))
+    setFromDevice(new Set(Object.keys(next)))
   }
 
   const fields = (codes: string[]) =>
     codes.map((code) => {
       const ind = byCode.get(code)
       return ind ? (
-        <MeasurementField key={code} ind={ind} value={values[code] ?? ''} environment={env} onChange={(v) => setValues((s) => ({ ...s, [code]: v }))} />
+        <MeasurementField
+          key={code}
+          ind={ind}
+          value={values[code] ?? ''}
+          environment={env}
+          onChange={(v) => {
+            setValues((s) => ({ ...s, [code]: v }))
+            setFromDevice((d) => (d.has(code) ? new Set([...d].filter((c) => c !== code)) : d))
+          }}
+        />
       ) : null
     })
 
@@ -115,9 +152,17 @@ export function LogPage() {
           </fieldset>
 
           <section aria-labelledby="vitals-title" className="rounded-lg border-[1.5px] border-line bg-surface-raised px-6 py-2">
-            <h2 id="vitals-title" className="pt-4 text-2xl leading-8 font-semibold">
-              Vitals
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
+              <h2 id="vitals-title" className="text-2xl leading-8 font-semibold">
+                Vitals
+              </h2>
+              <Button onClick={readDevices}>Read from devices</Button>
+            </div>
+            {fromDevice.size > 0 && (
+              <p className="pt-2 text-sm leading-5 text-ink-muted">
+                Filled by the connected sensors (simulated in this prototype) and saved with source «device». Edit a value to enter it by hand.
+              </p>
+            )}
             {fields(VITALS)}
           </section>
 
@@ -132,7 +177,13 @@ export function LogPage() {
             <Button variant="command" disabled={filled.length === 0 || invalid || save.isPending || !current} onClick={submit}>
               {save.isPending ? 'Saving…' : `Save ${filled.length || ''} reading${filled.length === 1 ? '' : 's'}`.replace('  ', ' ')}
             </Button>
-            <Button disabled={filled.length === 0} onClick={() => setValues({})}>
+            <Button
+              disabled={filled.length === 0}
+              onClick={() => {
+                setValues({})
+                setFromDevice(new Set())
+              }}
+            >
               Clear
             </Button>
             {invalid && <span className="text-sm leading-5 font-semibold text-warning-ink">Fix the highlighted values first.</span>}

@@ -2,14 +2,14 @@ import clsx from 'clsx'
 import { useNavigate } from 'react-router'
 import { seesWholeCrew } from '../features/auth/api.ts'
 import { roleLabel } from '../features/crew/api.ts'
-import { Sparkline } from '../features/crew/components/Sparkline.tsx'
+import { Sparkline } from '../shared/ui/Sparkline.tsx'
 import { useCurrentAstronaut } from '../features/crew/context.ts'
 import { useCrewOverview, type CrewMember } from '../features/crew/overview.ts'
 import { Legend } from '../features/legend/components/Legend.tsx'
 import { systemCode } from '../features/readiness/codes.ts'
 import { useCatalog, type Catalog } from '../shared/api/catalog.ts'
 import { useMission } from '../shared/api/mission.ts'
-import { formatNumber, formatRange, limitArrow, unitLabel } from '../shared/lib/format.ts'
+import { formatNumber, formatRange, limitArrow, thresholdsFor, unitLabel } from '../shared/lib/format.ts'
 import { alertClassOf, alertText } from '../shared/lib/status.ts'
 import { formatMET } from '../shared/lib/time.ts'
 import { Button } from '../shared/ui/Button.tsx'
@@ -124,7 +124,7 @@ export function CrewPage() {
                                   <span className="ml-1 text-sm font-normal">MET {formatMET(start, new Date(latest.measuredAt)).slice(0, -3)}</span>
                                 )}
                               </span>
-                              <Sparkline ind={ind} points={points} environment={env} />
+                              <Sparkline points={points} nominal={thresholdsFor(ind, env).nominal} />
                             </div>
                           </td>
                         )

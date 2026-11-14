@@ -19,9 +19,11 @@ function navFor(role: Parameters<typeof seesWholeCrew>[0]): NavItem[] {
     ...(seesWholeCrew(role) ? [{ to: '/crew', label: 'Crew' }] : []),
     { to: '/', label: 'Readiness' },
     { to: '/body', label: 'Body map' },
-    ...(role !== 'flight_surgeon' ? [{ to: '/log', label: 'Log measurement' }] : []),
+    ...(role !== 'flight_surgeon' ? [{ to: '/log', label: 'Log' }] : []),
     { to: '/trends', label: 'Trends' },
     { to: '/report', label: 'Report' },
+    { to: '/vehicle', label: 'Vehicle' },
+    { to: '/supplies', label: 'Med supplies' },
   ]
 }
 

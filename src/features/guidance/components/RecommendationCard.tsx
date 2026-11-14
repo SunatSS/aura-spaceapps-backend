@@ -36,6 +36,25 @@ export function RecommendationCard({ rec, guidance, acknowledged, onAcknowledge 
             <Meta k="Earth reply" v={`${formatDelay(guidance.commDelayMinS, guidance.commDelayMaxS)} one way`} />
           </>
         )}
+        {rec.supplies.length > 0 && (
+          <>
+            <dt className="text-sm leading-5 font-medium text-ink-muted">Med kit</dt>
+            <dd>
+              <ul className="flex flex-col gap-1 text-sm leading-5">
+                {rec.supplies.map((s) => (
+                  <li key={s.code} className="flex flex-wrap items-center gap-x-2">
+                    <span className="font-semibold">{s.name}</span>
+                    <span className="font-mono">
+                      {s.quantity} {s.unit}
+                    </span>
+                    <span className="text-ink-muted">· {s.location}</span>
+                    {s.status !== 'nominal' && <StatusBadge alert={alertClassOf[s.status]} quiet />}
+                  </li>
+                ))}
+              </ul>
+            </dd>
+          </>
+        )}
       </dl>
       <Button variant="command" disabled={acknowledged} onClick={onAcknowledge}>
         {acknowledged ? 'Acknowledged' : 'Acknowledge'}

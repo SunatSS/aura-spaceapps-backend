@@ -289,6 +289,151 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ingest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch of readings from onboard systems — environment sensors, dosimeters, wearables (FR-16)
+         * @description Authenticated with a bearer token (AURA_INGEST_TOKEN), not a session. Everything is stored with source = device.
+         */
+        post: operations["ingest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vehicle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Life support per module with statuses (FR-80, FR-81) */
+        get: operations["getVehicle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vehicle/telemetry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Parameter history for charts; last 7 days by default (FR-84) */
+        get: operations["listTelemetry"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Medical kit with statuses and usage forecast (FR-90, FR-91, FR-94) */
+        get: operations["listSupplies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplies/journal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who took what, when and why — newest first, last 50 (FR-92) */
+        get: operations["getSupplyJournal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplies/{id}/use": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["SupplyId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take an item from the kit (crew on board only) */
+        post: operations["useSupply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplies/{id}/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["SupplyId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record an inventory count; a mismatch is kept as a discrepancy (FR-95) */
+        post: operations["countSupply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/supplies/{id}/dispose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["SupplyId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write off an expired item (irreversible; the UI confirms first, FR-96) */
+        post: operations["disposeSupply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -318,6 +463,25 @@ export interface components {
             environments: components["schemas"]["Environment"][];
             systems: components["schemas"]["BodySystem"][];
             indicators: components["schemas"]["Indicator"][];
+            vehicleParameters: components["schemas"]["VehicleParameter"][];
+        };
+        VehicleParameter: {
+            code: string;
+            name: string;
+            shortName: string;
+            unit: string;
+            /** @description Body system it affects most */
+            system: string;
+            min: number;
+            max: number;
+            step: number;
+            freshnessMinutes: number;
+            thresholds: components["schemas"]["Thresholds"];
+            about: string;
+            guidance: {
+                caution: components["schemas"]["Advice"];
+                critical: components["schemas"]["Advice"];
+            };
         };
         Hazard: {
             code: string;
@@ -363,6 +527,8 @@ export interface components {
             action: string;
             recheckMinutes: number;
             escalate: boolean;
+            /** @description Codes of medical supplies the action needs */
+            supplies: string[] | null;
         };
         Indicator: {
             code: string;
@@ -414,6 +580,8 @@ export interface components {
             name: string;
             /** Format: date-time */
             startedAt: string;
+            /** Format: date-time */
+            plannedEndAt: string | null;
             phases: components["schemas"]["Phase"][];
             /** @description 1-based "Mission Day N" */
             missionDay: number;
@@ -432,6 +600,8 @@ export interface components {
             missionId: number;
             name: string;
             role: components["schemas"]["Role"];
+            /** @description Code of the module the member is in now; empty on Earth */
+            module: string;
         };
         MeasurementView: {
             /** Format: int64 */
@@ -466,6 +636,11 @@ export interface components {
             /** @enum {string} */
             context?: "" | "pre_eva" | "post_eva";
             note?: string;
+            /**
+             * @description device when read from a sensor; self-report answers cannot be device
+             * @enum {string}
+             */
+            source?: "" | "device";
         };
         CreateMeasurementsRequest: {
             measurements: components["schemas"]["NewMeasurement"][];
@@ -520,7 +695,7 @@ export interface components {
         Recommendation: {
             id: string;
             /** @enum {string} */
-            rule: "indicator_status" | "repeated_critical" | "sleep_debt" | "post_eva_hypoxia" | "low_mood_streak";
+            rule: "indicator_status" | "repeated_critical" | "sleep_debt" | "post_eva_hypoxia" | "low_mood_streak" | "cabin_air";
             indicator: string;
             system: string;
             severity: components["schemas"]["Status"];
@@ -535,6 +710,10 @@ export interface components {
             escalateReason: string;
             /** @description NASA HRP risk codes */
             risks: string[];
+            /** @description Vehicle parameter for cabin_air advice; empty otherwise */
+            parameter: string;
+            /** @description What the action needs from the medical kit */
+            supplies: components["schemas"]["SupplyRef"][];
         };
         Guidance: {
             /** Format: int64 */
@@ -654,7 +833,141 @@ export interface components {
                 change: number | null;
                 offNominal: number;
             }[];
+            /** @description Air in the member's module now and over 7 days; null when not in a module */
+            cabin: null | {
+                module: string;
+                name: string;
+                parameters: {
+                    parameter: string;
+                    name: string;
+                    unit: string;
+                    nominal: string;
+                    status: components["schemas"]["Status"];
+                    value: number | null;
+                    min: number | null;
+                    max: number | null;
+                    offNominal: number;
+                }[];
+            };
             disclaimer: string;
+        };
+        IngestRequest: {
+            telemetry?: {
+                module: string;
+                parameter: string;
+                value: number;
+                /**
+                 * Format: date-time
+                 * @description Defaults to now
+                 */
+                measuredAt?: string;
+            }[];
+            measurements?: {
+                /** Format: int64 */
+                astronautId: number;
+                /** @description Sensor indicators only (no self-report scales) */
+                indicator: string;
+                value: number;
+                /** Format: date-time */
+                measuredAt?: string;
+            }[];
+        };
+        VehicleParameterResult: {
+            code: string;
+            status: components["schemas"]["Status"];
+            fresh: boolean;
+            value: number | null;
+            unit: string;
+            /** Format: date-time */
+            measuredAt: string | null;
+        };
+        VehicleModule: {
+            code: string;
+            name: string;
+            status: components["schemas"]["Status"];
+            crew: {
+                /** Format: int64 */
+                id: number;
+                name: string;
+            }[];
+            parameters: components["schemas"]["VehicleParameterResult"][];
+        };
+        Vehicle: {
+            status: components["schemas"]["Status"];
+            modules: components["schemas"]["VehicleModule"][];
+            /** Format: date-time */
+            assessedAt: string;
+        };
+        TelemetryView: {
+            module: string;
+            parameter: string;
+            value: number;
+            unit: string;
+            /** Format: date-time */
+            measuredAt: string;
+            source: string;
+            status: components["schemas"]["Status"];
+        };
+        SupplyRef: {
+            code: string;
+            name: string;
+            quantity: number;
+            unit: string;
+            location: string;
+            status: components["schemas"]["Status"];
+        };
+        SupplyItem: {
+            /** Format: int64 */
+            id: number;
+            code: string;
+            name: string;
+            /** @enum {string} */
+            category: "medication" | "consumable" | "equipment" | "oxygen";
+            unit: string;
+            quantity: number;
+            minQuantity: number;
+            location: string;
+            /** Format: date-time */
+            expiresAt: string | null;
+            /** Format: date-time */
+            lastCountedAt: string | null;
+            /** @description Counted minus expected at the last count */
+            discrepancy: number;
+            status: components["schemas"]["Status"];
+            /** @description Inventory count due */
+            advisory: boolean;
+            reasons: string[];
+            dailyUse: number;
+            /** Format: date-time */
+            runsOutAt: string | null;
+            lastsMission: boolean;
+        };
+        Supplies: {
+            items: components["schemas"]["SupplyItem"][];
+            /** Format: date-time */
+            missionEndAt: string | null;
+            /** Format: date-time */
+            assessedAt: string;
+        };
+        JournalEntry: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            supplyId: number;
+            /** Format: int64 */
+            astronautId: number | null;
+            /** @enum {string} */
+            kind: "use" | "count" | "dispose";
+            delta: number;
+            quantityAfter: number;
+            reason: string;
+            recommendationId: string;
+            /** Format: date-time */
+            createdAt: string;
+            supplyName: string;
+            unit: string;
+            /** @description Empty when nobody in particular */
+            astronautName: string;
         };
     };
     responses: {
@@ -671,6 +984,7 @@ export interface components {
     parameters: {
         AstronautId: number;
         From: string;
+        SupplyId: number;
         To: string;
     };
     requestBodies: never;
@@ -1091,6 +1405,226 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    ingest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted counts */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        telemetry: number;
+                        measurements: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    getVehicle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every module, its parameters and who is in it */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Vehicle"];
+                };
+            };
+            401: components["responses"]["Error"];
+        };
+    };
+    listTelemetry: {
+        parameters: {
+            query?: {
+                module?: string;
+                parameter?: string;
+                from?: components["parameters"]["From"];
+                to?: components["parameters"]["To"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Readings in chronological order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        telemetry: components["schemas"]["TelemetryView"][];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+        };
+    };
+    listSupplies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every item */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Supplies"];
+                };
+            };
+            401: components["responses"]["Error"];
+        };
+    };
+    getSupplyJournal: {
+        parameters: {
+            query?: {
+                supplyId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Journal entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        entries: components["schemas"]["JournalEntry"][];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+        };
+    };
+    useSupply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["SupplyId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    quantity: number;
+                    reason: string;
+                    /** @description The recommendation that asked for it */
+                    recommendationId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The item after the change */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyItem"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    countSupply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["SupplyId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    quantity: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The item after the count */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyItem"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    disposeSupply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["SupplyId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The item after disposal */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyItem"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };

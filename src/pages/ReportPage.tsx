@@ -65,6 +65,7 @@ export function ReportPage() {
           <Summary r={r} start={start} />
           <Alerts r={r} start={start} />
           <Recommendations r={r} />
+          <CabinAir r={r} />
           <Trends r={r} />
 
           <section className="flex flex-col gap-3">
@@ -216,6 +217,47 @@ function Recommendations({ r }: { r: Report }) {
 }
 
 const n = (v: number | null) => (v === null ? '—' : formatNumber(v))
+
+/** Air in the member's module now and over 7 days (FR-84). */
+function CabinAir({ r }: { r: Report }) {
+  if (!r.cabin) return null
+  return (
+    <Section id="cabin-title" title={`Cabin air — ${r.cabin.name}, last 7 days`}>
+      <div className="overflow-x-auto rounded-lg border-[1.5px] border-line bg-surface-raised">
+        <table className="w-full text-left">
+          <thead className="text-sm leading-5 text-ink-muted">
+            <tr className="border-b border-line">
+              <th className="px-4 py-2 font-medium">Parameter</th>
+              <th className="px-4 py-2 font-medium">Now</th>
+              <th className="px-4 py-2 font-medium">Class</th>
+              <th className="px-4 py-2 font-medium">Nominal</th>
+              <th className="px-4 py-2 text-right font-medium">Min</th>
+              <th className="px-4 py-2 text-right font-medium">Max</th>
+              <th className="px-4 py-2 text-right font-medium">Off-nominal</th>
+            </tr>
+          </thead>
+          <tbody className="font-mono text-sm">
+            {r.cabin.parameters.map((c) => (
+              <tr key={c.parameter} className="border-b border-line last:border-0">
+                <td className="px-4 py-2 font-sans text-base">{c.name}</td>
+                <td className="px-4 py-2">
+                  {n(c.value)} <span className="text-ink-muted">{c.unit}</span>
+                </td>
+                <td className="px-4 py-2 font-sans">
+                  <StatusBadge alert={alertClassOf[c.status]} quiet />
+                </td>
+                <td className="px-4 py-2 text-ink-muted">{c.nominal}</td>
+                <td className="px-4 py-2 text-right">{n(c.min)}</td>
+                <td className="px-4 py-2 text-right">{n(c.max)}</td>
+                <td className={clsx('px-4 py-2 text-right', c.offNominal > 0 && 'font-semibold')}>{c.offNominal}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Section>
+  )
+}
 
 function Trends({ r }: { r: Report }) {
   return (
