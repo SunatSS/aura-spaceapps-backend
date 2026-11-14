@@ -109,7 +109,7 @@ func TestProfileTasksAndEnvironment(t *testing.T) {
 	// Demo environment switch changes the phase and the Earth delay.
 	var m struct {
 		CurrentPhase struct{ Environment string } `json:"currentPhase"`
-		Environment  struct{ CommDelayMaxS int } `json:"environment"`
+		Environment  struct{ CommDelayMaxS int }  `json:"environment"`
 	}
 	me.do(http.MethodPost, "/api/v1/demo/environment", map[string]string{"environment": "iss"}, http.StatusOK, &m)
 	if m.CurrentPhase.Environment != "iss" || m.Environment.CommDelayMaxS > 5 {

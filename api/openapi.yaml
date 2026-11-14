@@ -22,6 +22,7 @@ paths:
   /health:
     get:
       operationId: getHealth
+      tags: ["Mission and catalog"]
       security: []
       summary: Liveness and database check
       responses:
@@ -39,6 +40,7 @@ paths:
   /indicators:
     get:
       operationId: getCatalog
+      tags: ["Mission and catalog"]
       security: []
       summary: Health content catalog — indicators, body systems, NASA HRP hazards and risks, environments
       responses:
@@ -51,6 +53,7 @@ paths:
   /missions/current:
     get:
       operationId: getCurrentMission
+      tags: ["Mission and catalog"]
       security: []
       summary: Current mission with phases, current phase, environment and mission day
       responses:
@@ -64,6 +67,7 @@ paths:
   /auth/passkeys:
     get:
       operationId: listPasskeys
+      tags: ["Sign-in and passkeys"]
       summary: The signed-in member's passkeys (FR-74)
       responses:
         "200":
@@ -80,6 +84,7 @@ paths:
   /auth/passkeys/{id}:
     delete:
       operationId: deletePasskey
+      tags: ["Sign-in and passkeys"]
       summary: Remove one of your passkeys
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
@@ -91,6 +96,7 @@ paths:
   /auth/passkeys/register/begin:
     post:
       operationId: beginPasskeyRegistration
+      tags: ["Sign-in and passkeys"]
       summary: Options for navigator.credentials.create(); binary fields are base64url
       responses:
         "200":
@@ -103,6 +109,7 @@ paths:
   /auth/passkeys/register/finish:
     post:
       operationId: finishPasskeyRegistration
+      tags: ["Sign-in and passkeys"]
       summary: Verify and store the new passkey
       requestBody:
         required: true
@@ -130,6 +137,7 @@ paths:
   /auth/passkeys/login/begin:
     post:
       operationId: beginPasskeyLogin
+      tags: ["Sign-in and passkeys"]
       summary: Challenge for navigator.credentials.get() with a discoverable passkey
       security: []
       responses:
@@ -148,6 +156,7 @@ paths:
   /auth/passkeys/login/finish:
     post:
       operationId: finishPasskeyLogin
+      tags: ["Sign-in and passkeys"]
       summary: Verify the assertion and start a session (sets the cookie)
       security: []
       requestBody:
@@ -177,6 +186,7 @@ paths:
   /openapi.yaml:
     get:
       operationId: getOpenAPI
+      tags: ["Mission and catalog"]
       summary: This contract (Swagger UI at /api/docs/)
       security: []
       responses:
@@ -191,6 +201,7 @@ paths:
       - $ref: "#/components/parameters/AstronautId"
     get:
       operationId: getProfile
+      tags: ["Profile and daily tasks"]
       summary: Known conditions, baselines, personal ranges and weights (FR-6, FR-24)
       responses:
         "200":
@@ -203,6 +214,7 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
     put:
       operationId: updateProfile
+      tags: ["Profile and daily tasks"]
       summary: Set particularities — flight surgeon only; listed indicators and weights are replaced
       requestBody:
         required: true
@@ -231,6 +243,7 @@ paths:
       - $ref: "#/components/parameters/AstronautId"
     get:
       operationId: getTasks
+      tags: ["Profile and daily tasks"]
       summary: Today's tasks, overdue reminders, streak and badges (FR-40…FR-43)
       responses:
         "200":
@@ -249,6 +262,7 @@ paths:
       - { name: code, in: path, required: true, schema: { type: string } }
     post:
       operationId: completeTask
+      tags: ["Profile and daily tasks"]
       summary: Mark a manual task (e.g. exercise) done today — own tasks only
       responses:
         "200":
@@ -262,6 +276,7 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
     delete:
       operationId: uncompleteTask
+      tags: ["Profile and daily tasks"]
       summary: Undo today's mark
       responses:
         "200":
@@ -277,6 +292,7 @@ paths:
   /demo/environment:
     post:
       operationId: switchEnvironment
+      tags: ["Demo"]
       summary: Start a new mission phase in another environment now (demo, FR-4)
       requestBody:
         required: true
@@ -301,6 +317,7 @@ paths:
   /astronauts:
     get:
       operationId: listAstronauts
+      tags: ["Health data"]
       summary: Mission members, including the ground flight surgeon
       responses:
         "200":
@@ -321,6 +338,7 @@ paths:
       - $ref: "#/components/parameters/AstronautId"
     get:
       operationId: getAstronaut
+      tags: ["Health data"]
       summary: One mission member
       responses:
         "200":
@@ -336,6 +354,7 @@ paths:
       - $ref: "#/components/parameters/AstronautId"
     get:
       operationId: getReadiness
+      tags: ["Health data"]
       summary: Readiness Score, per-system and per-indicator statuses
       responses:
         "200":
@@ -351,6 +370,7 @@ paths:
       - $ref: "#/components/parameters/AstronautId"
     get:
       operationId: getGuidance
+      tags: ["Health data"]
       summary: Active recommendations and escalations to the flight surgeon
       responses:
         "200":
@@ -366,6 +386,7 @@ paths:
       - $ref: "#/components/parameters/AstronautId"
     get:
       operationId: listMeasurements
+      tags: ["Health data"]
       summary: Reading history in chronological order (for charts)
       parameters:
         - name: indicator
@@ -390,6 +411,7 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
     post:
       operationId: createMeasurements
+      tags: ["Health data"]
       summary: Record one or more readings (manual entry or check-in)
       requestBody:
         required: true
@@ -416,6 +438,7 @@ paths:
       - $ref: "#/components/parameters/AstronautId"
     get:
       operationId: listActivities
+      tags: ["Health data"]
       summary: Activities such as landing and spacewalks (EVA)
       parameters:
         - $ref: "#/components/parameters/From"
@@ -438,6 +461,7 @@ paths:
   /auth/login:
     post:
       operationId: login
+      tags: ["Sign-in and passkeys"]
       summary: Sign in; sets the session cookie
       security: []
       requestBody:
@@ -457,6 +481,7 @@ paths:
   /auth/logout:
     post:
       operationId: logout
+      tags: ["Sign-in and passkeys"]
       summary: Sign out; clears the session cookie
       security: []
       responses:
@@ -465,6 +490,7 @@ paths:
   /auth/me:
     get:
       operationId: getSession
+      tags: ["Sign-in and passkeys"]
       summary: Who is signed in
       responses:
         "200":
@@ -477,6 +503,7 @@ paths:
   /auth/demo-accounts:
     get:
       operationId: listDemoAccounts
+      tags: ["Sign-in and passkeys"]
       summary: Demo logins for the sign-in screen (demo mission only)
       security: []
       responses:
@@ -492,6 +519,7 @@ paths:
       - $ref: "#/components/parameters/AstronautId"
     get:
       operationId: getReport
+      tags: ["Crew overview and reports"]
       summary: Flight-surgeon report with readiness, out-of-range readings, recommendations and 7-day trends (FR-32)
       parameters:
         - name: format
@@ -514,6 +542,7 @@ paths:
   /crew/overview:
     get:
       operationId: getCrewOverview
+      tags: ["Crew overview and reports"]
       summary: Whole crew at a glance, for the commander, the deputy and the flight surgeon (FR-55, FR-73)
       responses:
         "200":
@@ -527,6 +556,7 @@ paths:
   /demo/reset:
     post:
       operationId: resetDemo
+      tags: ["Demo"]
       summary: Replace all data with a fresh demo mission and sign the caller in again (FR-62)
       responses:
         "200":
@@ -540,6 +570,7 @@ paths:
   /ingest:
     post:
       operationId: ingest
+      tags: ["Vehicle and ingest"]
       summary: Batch of readings from onboard systems — environment sensors, dosimeters, wearables (FR-16)
       description: Authenticated with a bearer token (AURA_INGEST_TOKEN), not a session. Everything is stored with source = device.
       security: [{ ingestToken: [] }]
@@ -566,6 +597,7 @@ paths:
   /vehicle:
     get:
       operationId: getVehicle
+      tags: ["Vehicle and ingest"]
       summary: Life support per module with statuses (FR-80, FR-81)
       responses:
         "200":
@@ -578,6 +610,7 @@ paths:
   /vehicle/telemetry:
     get:
       operationId: listTelemetry
+      tags: ["Vehicle and ingest"]
       summary: Parameter history for charts; last 7 days by default (FR-84)
       parameters:
         - { name: module, in: query, schema: { type: string } }
@@ -600,6 +633,7 @@ paths:
   /supplies:
     get:
       operationId: listSupplies
+      tags: ["Medical supplies"]
       summary: Medical kit with statuses and usage forecast (FR-90, FR-91, FR-94)
       responses:
         "200":
@@ -612,6 +646,7 @@ paths:
   /supplies/journal:
     get:
       operationId: getSupplyJournal
+      tags: ["Medical supplies"]
       summary: Who took what, when and why — newest first, last 50 (FR-92)
       parameters:
         - { name: supplyId, in: query, schema: { type: integer, format: int64 } }
@@ -633,6 +668,7 @@ paths:
       - $ref: "#/components/parameters/SupplyId"
     post:
       operationId: useSupply
+      tags: ["Medical supplies"]
       summary: Take an item from the kit (crew on board only)
       requestBody:
         required: true
@@ -662,6 +698,7 @@ paths:
       - $ref: "#/components/parameters/SupplyId"
     post:
       operationId: countSupply
+      tags: ["Medical supplies"]
       summary: Record an inventory count; a mismatch is kept as a discrepancy (FR-95)
       requestBody:
         required: true
@@ -689,6 +726,7 @@ paths:
       - $ref: "#/components/parameters/SupplyId"
     post:
       operationId: disposeSupply
+      tags: ["Medical supplies"]
       summary: Write off an expired item (irreversible; the UI confirms first, FR-96)
       responses:
         "200":

@@ -28,6 +28,7 @@ const Window = 30 * day
 type Completion struct {
 	Task string
 	Day  string
+	At   time.Time
 }
 
 type Input struct {
@@ -74,11 +75,11 @@ func DayKey(t time.Time) string { return t.UTC().Format(time.DateOnly) }
 
 type index struct {
 	byIndicator map[string][]time.Time // sorted ascending
-	manual      map[string]bool        // task|day
+	manual      map[string]time.Time   // task|day → when it was marked
 }
 
 func newIndex(in Input) index {
-	ix := index{byIndicator: map[string][]time.Time{}, manual: map[string]bool{}}
+	ix := index{byIndicator: map[string][]time.Time{}, manual: map[string]time.Time{}}
 	for _, m := range in.Readings {
 		ix.byIndicator[m.Indicator] = append(ix.byIndicator[m.Indicator], m.MeasuredAt.UTC())
 	}
@@ -86,7 +87,7 @@ func newIndex(in Input) index {
 		slices.SortFunc(ix.byIndicator[k], func(a, b time.Time) int { return a.Compare(b) })
 	}
 	for _, c := range in.Completions {
-		ix.manual[c.Task+"|"+c.Day] = true
+		ix.manual[c.Task+"|"+c.Day] = c.At
 	}
 	return ix
 }
@@ -110,7 +111,9 @@ func (ix index) status(item catalog.ScheduleItem, d, now time.Time) Task {
 	t := Task{Code: item.Code, Title: item.Title, Every: item.Every, Manual: item.Manual,
 		Indicators: append([]string{}, item.Indicators...), Missing: []string{}, Due: d.Add(time.Duration(item.DueHour) * time.Hour)}
 	if item.Manual {
-		t.Done = ix.manual[item.Code+"|"+DayKey(d)]
+		if at, ok := ix.manual[item.Code+"|"+DayKey(d)]; ok {
+			t.Done, t.DoneAt = true, &at
+		}
 	} else {
 		from, to := d.Add(time.Duration(item.FromHour)*time.Hour), d.Add(day)
 		if item.Every == catalog.EveryWeekly {

@@ -292,7 +292,7 @@ func TestTrendAndEarthDelay(t *testing.T) {
 		{"body_mass_change", -1.3, 7 * day, ""}, {"body_mass_change", -1.7, time.Hour, ""},
 	}, 0)
 	tr, ok := recs["trend:body_mass_change"]
-	if !ok || tr.Severity != domain.StatusCaution || !strings.Contains(tr.Basis, "in about 5 days") || !strings.Contains(tr.Basis, "3 weeks ago") {
+	if !ok || tr.Severity != domain.StatusCaution || !strings.Contains(tr.Basis, "(-2–2 %) in about 5 days") || !strings.Contains(tr.Basis, "3 weeks ago") {
 		t.Errorf("trend = %+v", tr)
 	}
 

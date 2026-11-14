@@ -437,11 +437,26 @@ func (e *evaluator) trend() {
 		e.out = append(e.out, Recommendation{
 			ID: RuleTrend + ":" + ind.Code, Rule: RuleTrend, Indicator: ind.Code, System: ind.System,
 			Severity: domain.StatusCaution, Title: ind.Name + ": " + strings.ToLower(rule.Title[:1]) + rule.Title[1:], Action: rule.Action,
-			Basis: fmt.Sprintf("%s: %s now, %s %s; at this rate it leaves the nominal range (%s) in about %d days.",
-				ind.Name, ind.FormatValue(pts[0].Value), ind.FormatValue(oldest.Value), ago, thr, days),
+			Basis: fmt.Sprintf("%s: %s now, %s %s; at this rate it leaves the nominal range (%s) in about %s.",
+				ind.Name, ind.FormatValue(pts[0].Value), ind.FormatValue(oldest.Value), ago, rangeWithUnit(thr, ind), plural(days, "day")),
 			Risks: ind.Risks,
 		})
 	}
+}
+
+// rangeWithUnit is "−2–2 %" or "3/5"-style for scales.
+func rangeWithUnit(r catalog.Range, ind catalog.Indicator) string {
+	if ind.Input == catalog.InputScale {
+		return r.String() + "/" + num(ind.Max)
+	}
+	return r.String() + " " + ind.Unit
+}
+
+func plural(n int, word string) string {
+	if n == 1 {
+		return "1 " + word
+	}
+	return fmt.Sprintf("%d %ss", n, word)
 }
 
 // rangeWidth is the width of the nominal range; for one-sided ranges, the

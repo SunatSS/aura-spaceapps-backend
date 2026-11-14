@@ -158,7 +158,7 @@ func (h *handlers) taskState(r *http.Request, a domain.Astronaut, now time.Time)
 	}
 	comps := make([]tasks.Completion, len(cs))
 	for i, c := range cs {
-		comps[i] = tasks.Completion{Task: c.Task, Day: c.Day}
+		comps[i] = tasks.Completion{Task: c.Task, Day: c.Day, At: c.CompletedAt}
 	}
 	return tasks.Evaluate(tasks.Input{Catalog: h.deps.Catalog, Readings: ms, Completions: comps, Activities: acts, Now: now}), nil
 }
