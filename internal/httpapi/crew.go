@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"aura/internal/auth"
+	"aura/internal/catalog"
 	"aura/internal/domain"
 	"aura/internal/guidance"
 	"aura/internal/readiness"
@@ -24,6 +25,7 @@ type evaluation struct {
 	recs    []guidance.Recommendation
 	history []domain.Measurement  // last guidanceHistory, oldest first
 	cabin   *vehicle.ModuleResult // the module the member is in, if any
+	profile *catalog.Profile      // personal ranges, baselines, weights
 }
 
 // missionState is the vehicle and the medical kit, shared by all members.
@@ -54,14 +56,22 @@ func (h *handlers) evaluate(ctx context.Context, a domain.Astronaut, m domain.Mi
 	if err != nil {
 		return evaluation{}, fmt.Errorf("history: %w", err)
 	}
-	res := readiness.Assess(readiness.Input{Catalog: h.deps.Catalog, Mission: m, Latest: latest, Now: now})
+	profile, err := q.Profile(ctx, a.ID)
+	if err != nil {
+		return evaluation{}, fmt.Errorf("profile: %w", err)
+	}
+	res := readiness.Assess(readiness.Input{Catalog: h.deps.Catalog, Mission: m, Latest: latest, Profile: profile, Now: now})
 	var cabin *vehicle.ModuleResult
 	if mr, ok := st.vehicle.Module(a.Module); ok {
 		cabin = &mr
 	}
-	recs := guidance.Evaluate(guidance.Input{Catalog: h.deps.Catalog, Mission: m, Assessment: res, History: history, Cabin: cabin, Now: now})
+	in := guidance.Input{Catalog: h.deps.Catalog, Mission: m, Assessment: res, History: history, Cabin: cabin, Profile: profile, Now: now}
+	if env, ok := h.deps.Catalog.Environment(m.EnvironmentAt(now)); ok {
+		in.CommDelayMinS = env.CommDelayMinS
+	}
+	recs := guidance.Evaluate(in)
 	withSupplies(recs, st.supplies)
-	return evaluation{result: res, recs: recs, history: history, cabin: cabin}, nil
+	return evaluation{result: res, recs: recs, history: history, cabin: cabin, profile: profile}, nil
 }
 
 // --- flight-surgeon report (FR-32) --------------------------------------------------
@@ -104,7 +114,7 @@ func (h *handlers) report(w http.ResponseWriter, r *http.Request) {
 	}
 	rep := report.Build(report.Input{
 		Catalog: h.deps.Catalog, Mission: m, Astronaut: a, Assessment: ev.result,
-		Recommendations: ev.recs, History: ev.history, Cabin: ev.cabin, CabinHistory: cabinHistory, Now: now,
+		Recommendations: ev.recs, History: ev.history, Cabin: ev.cabin, CabinHistory: cabinHistory, Profile: ev.profile, Now: now,
 	})
 	if format != "text" {
 		writeJSON(w, http.StatusOK, rep)
@@ -151,6 +161,14 @@ type crewMember struct {
 	Escalate        bool                      `json:"escalate"`
 	Recommendations []guidance.Recommendation `json:"recommendations"`
 	Trends          []trendSeries             `json:"trends"` // last 7 days, every catalog indicator
+	Tasks           taskSummary               `json:"tasks"`  // today's schedule (FR-44)
+}
+
+type taskSummary struct {
+	Done    int `json:"done"`
+	Total   int `json:"total"`
+	Overdue int `json:"overdue"`
+	Streak  int `json:"streak"`
 }
 
 type crewOverviewResponse struct {
@@ -192,6 +210,12 @@ func (h *handlers) crewOverview(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		mem := crewMember{Astronaut: a, Readiness: ev.result, Recommendations: ev.recs}
+		ts, err := h.taskState(r, a, now)
+		if err != nil {
+			h.internal(w, "crew overview tasks", err)
+			return
+		}
+		mem.Tasks = taskSummary{Done: ts.Done, Total: ts.Total, Overdue: ts.Overdue, Streak: ts.Streak}
 		for _, rec := range ev.recs {
 			switch rec.Severity {
 			case domain.StatusCritical:
@@ -204,8 +228,8 @@ func (h *handlers) crewOverview(w http.ResponseWriter, r *http.Request) {
 		for _, ind := range h.deps.Catalog.Indicators {
 			s := trendSeries{Indicator: ind.Code, Points: []trendPoint{}}
 			for _, x := range ev.history {
-				if x.Indicator == ind.Code {
-					s.Points = append(s.Points, trendPoint{MeasuredAt: x.MeasuredAt, Value: x.Value, Status: readiness.IndicatorStatus(ind, x, m)})
+				if x.Indicator == ind.Code && now.Sub(x.MeasuredAt) <= report.Window {
+					s.Points = append(s.Points, trendPoint{MeasuredAt: x.MeasuredAt, Value: x.Value, Status: readiness.IndicatorStatus(ind, x, m, ev.profile)})
 				}
 			}
 			slices.SortFunc(s.Points, func(a, b trendPoint) int { return a.MeasuredAt.Compare(b.MeasuredAt) })

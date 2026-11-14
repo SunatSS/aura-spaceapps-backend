@@ -12,8 +12,11 @@ func TestEmbeddedCatalogIsValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("embedded catalog: %v", err)
 	}
-	if len(c.Indicators) != 10 {
-		t.Errorf("catalog should have 10 indicators (9 P0 + headache check-in), got %d", len(c.Indicators))
+	if len(c.Indicators) != 15 {
+		t.Errorf("catalog should have 15 indicators (9 P0 + 4 P1 + headache and vision), got %d", len(c.Indicators))
+	}
+	if len(c.Countermeasures) < 10 || len(c.Schedule) != 7 {
+		t.Errorf("countermeasures = %d, schedule = %d", len(c.Countermeasures), len(c.Schedule))
 	}
 	if len(c.VehicleParameters) != 6 {
 		t.Errorf("catalog should have 6 vehicle parameters, got %d", len(c.VehicleParameters))

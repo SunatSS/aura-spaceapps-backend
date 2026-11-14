@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AURA API — OpenAPI</title>
+  <link rel="stylesheet" href="/api/docs/swagger-ui.css">
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    .aura-note { padding: 12px 20px; background: #0b1324; color: #f2e8d5; font-size: 14px; line-height: 20px; }
+    .aura-note a { color: #5cf08a; }
+    .aura-note code { font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <div class="aura-note">
+    <strong>AURA API</strong> — contract: <a href="/api/v1/openapi.yaml">/api/v1/openapi.yaml</a>.
+    Endpoints that need a session use the <code>aura_session</code> cookie: sign in in the <a href="/">app</a> first (same browser), then «Try it out».
+    Onboard systems use <code>POST /ingest</code> with «Authorize» → bearer <code>aura-demo-ingest</code> on the public demo.
+  </div>
+  <div id="swagger-ui"></div>
+  <script src="/api/docs/swagger-ui-bundle.js"></script>
+  <script>
+    window.ui = SwaggerUIBundle({
+      url: '/api/v1/openapi.yaml',
+      dom_id: '#swagger-ui',
+      deepLinking: true,
+      persistAuthorization: true,
+      tryItOutEnabled: false,
+      withCredentials: true,
+    });
+  </script>
+</body>
+</html>

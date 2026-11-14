@@ -51,7 +51,7 @@ func TestMissionAndCatalog(t *testing.T) {
 		Risks      []any            `json:"risks"`
 	}
 	e.do(http.MethodGet, "/api/v1/indicators", nil, http.StatusOK, &cat)
-	if cat.Disclaimer == "" || len(cat.Indicators) != 10 || len(cat.Systems) != 7 || len(cat.Risks) == 0 {
+	if cat.Disclaimer == "" || len(cat.Indicators) != 15 || len(cat.Systems) != 7 || len(cat.Risks) == 0 {
 		t.Errorf("catalog: %d indicators, %d systems, %d risks", len(cat.Indicators), len(cat.Systems), len(cat.Risks))
 	}
 	if _, ok := cat.Indicators[0]["howToMeasure"]; !ok {

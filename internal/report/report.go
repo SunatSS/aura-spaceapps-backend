@@ -33,6 +33,7 @@ type Input struct {
 	Recommendations []guidance.Recommendation
 	History         []domain.Measurement  // readings in the last Window, any order
 	Cabin           *vehicle.ModuleResult // the member's module now, if known
+	Profile         *catalog.Profile      // personal ranges; nil = standard
 	CabinHistory    []domain.Telemetry    // that module's telemetry in the last Window
 	Now             time.Time
 }
@@ -163,18 +164,20 @@ func Build(in Input) Report {
 	}
 	byIndicator := map[string][]domain.Measurement{}
 	for _, m := range in.History {
-		byIndicator[m.Indicator] = append(byIndicator[m.Indicator], m)
+		if now.Sub(m.MeasuredAt) <= Window {
+			byIndicator[m.Indicator] = append(byIndicator[m.Indicator], m)
+		}
 	}
 
 	for _, ind := range in.Catalog.Indicators {
 		ir := current[ind.Code]
-		nominal := ind.ThresholdsFor(env).Nominal
+		nominal := in.Profile.ThresholdsFor(ind, env).Nominal
 		switch {
 		case !ir.Fresh:
 			r.Stale = append(r.Stale, Stale{Indicator: ind.Code, Name: ind.Name, LastMeasuredAt: ir.MeasuredAt})
 		case ir.Status == domain.StatusCaution || ir.Status == domain.StatusCritical:
 			r.Readiness.FreshIndicators++
-			thr := ind.ThresholdsFor(ir.Environment).Nominal
+			thr := in.Profile.ThresholdsFor(ind, ir.Environment).Nominal
 			dir := "above"
 			if thr.Min != nil && *ir.Value < *thr.Min {
 				dir = "below"
@@ -186,7 +189,7 @@ func Build(in Input) Report {
 		default:
 			r.Readiness.FreshIndicators++
 		}
-		r.Trends = append(r.Trends, trend(ind, nominal, byIndicator[ind.Code], in.Mission))
+		r.Trends = append(r.Trends, trend(ind, nominal, byIndicator[ind.Code], in.Mission, in.Profile))
 	}
 	slices.SortStableFunc(r.Alerts, func(a, b Alert) int { return cmp.Compare(b.Status.Severity(), a.Status.Severity()) })
 	if in.Cabin != nil {
@@ -224,7 +227,7 @@ func cabin(cat *catalog.Catalog, mod vehicle.ModuleResult, history []domain.Tele
 	return c
 }
 
-func trend(ind catalog.Indicator, nominal catalog.Range, ms []domain.Measurement, mission domain.Mission) Trend {
+func trend(ind catalog.Indicator, nominal catalog.Range, ms []domain.Measurement, mission domain.Mission, p *catalog.Profile) Trend {
 	t := Trend{Indicator: ind.Code, Name: ind.Name, Unit: unit(ind), Nominal: nominal.String(), Readings: len(ms)}
 	if len(ms) == 0 {
 		return t
@@ -233,7 +236,7 @@ func trend(ind catalog.Indicator, nominal catalog.Range, ms []domain.Measurement
 	lo, hi, sum := math.Inf(1), math.Inf(-1), 0.0
 	for _, m := range ms {
 		lo, hi, sum = math.Min(lo, m.Value), math.Max(hi, m.Value), sum+m.Value
-		if ind.Classify(m.Value, mission.EnvironmentAt(m.MeasuredAt)) != domain.StatusNominal {
+		if p.Classify(ind, m.Value, mission.EnvironmentAt(m.MeasuredAt)) != domain.StatusNominal {
 			t.OffNominal++
 		}
 	}

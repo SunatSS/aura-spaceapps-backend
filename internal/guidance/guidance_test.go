@@ -260,3 +260,58 @@ func TestCabinAirAndSupplies(t *testing.T) {
 		}
 	}
 }
+
+func TestTrendAndEarthDelay(t *testing.T) {
+	cat, err := catalog.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := now.Add(-200 * day)
+	mission := domain.Mission{StartedAt: start, Phases: []domain.Phase{{Environment: domain.EnvMarsSurface, StartsAt: start}}}
+	evaluate := func(readings []reading, delay int) map[string]Recommendation {
+		var history []domain.Measurement
+		latest := map[string]domain.Measurement{}
+		for _, r := range readings {
+			m := domain.Measurement{Indicator: r.code, Value: r.value, MeasuredAt: now.Add(-r.ago)}
+			history = append(history, m)
+			if cur, ok := latest[r.code]; !ok || m.MeasuredAt.After(cur.MeasuredAt) {
+				latest[r.code] = m
+			}
+		}
+		a := readiness.Assess(readiness.Input{Catalog: cat, Mission: mission, Latest: latest, Now: now})
+		out := map[string]Recommendation{}
+		for _, r := range Evaluate(Input{Catalog: cat, Mission: mission, Assessment: a, History: history, CommDelayMinS: delay, Now: now}) {
+			out[r.ID] = r
+		}
+		return out
+	}
+
+	// Body mass still nominal (−1.7 %) but dropping ~0.06 %/day → leaves −2 % in ~5 days.
+	recs := evaluate([]reading{
+		{"body_mass_change", -0.4, 21 * day, ""}, {"body_mass_change", -0.9, 14 * day, ""},
+		{"body_mass_change", -1.3, 7 * day, ""}, {"body_mass_change", -1.7, time.Hour, ""},
+	}, 0)
+	tr, ok := recs["trend:body_mass_change"]
+	if !ok || tr.Severity != domain.StatusCaution || !strings.Contains(tr.Basis, "in about 5 days") || !strings.Contains(tr.Basis, "3 weeks ago") {
+		t.Errorf("trend = %+v", tr)
+	}
+
+	// A stable series is not a trend, and neither is noise.
+	recs = evaluate([]reading{
+		{"body_mass_change", -1.0, 21 * day, ""}, {"body_mass_change", -1.1, 14 * day, ""},
+		{"body_mass_change", -0.9, 7 * day, ""}, {"body_mass_change", -1.0, time.Hour, ""},
+	}, 0)
+	if _, ok := recs["trend:body_mass_change"]; ok {
+		t.Error("stable body mass reported as a trend")
+	}
+
+	// Escalations mention the round-trip delay on Mars (3 min one way → 6 min).
+	recs = evaluate([]reading{{"spo2", 89, time.Hour, ""}}, 182)
+	if r := recs["indicator_status:spo2"]; !r.Escalate || !strings.Contains(r.Action, "at least 6 min") {
+		t.Errorf("escalation action = %q", r.Action)
+	}
+	recs = evaluate([]reading{{"spo2", 89, time.Hour, ""}}, 2)
+	if r := recs["indicator_status:spo2"]; strings.Contains(r.Action, "reply from Earth") {
+		t.Errorf("no delay note near Earth: %q", r.Action)
+	}
+}

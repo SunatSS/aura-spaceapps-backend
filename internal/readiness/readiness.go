@@ -32,6 +32,7 @@ type Input struct {
 	Catalog *catalog.Catalog
 	Mission domain.Mission
 	Latest  map[string]domain.Measurement // latest reading per indicator code
+	Profile *catalog.Profile              // personal ranges, baselines and weights; nil = standard
 	Now     time.Time
 }
 
@@ -44,6 +45,9 @@ type IndicatorResult struct {
 	Unit        string             `json:"unit"`
 	MeasuredAt  *time.Time         `json:"measuredAt"`
 	Environment domain.Environment `json:"environment"` // environment at measurement time
+	Nominal     catalog.Range      `json:"nominal"`     // the nominal range that applied
+	Personal    bool               `json:"personal"`    // personal range set by the flight surgeon
+	Baseline    *float64           `json:"baseline"`    // preflight value, if known
 }
 
 type SystemResult struct {
@@ -63,9 +67,9 @@ type Result struct {
 }
 
 // IndicatorStatus classifies one reading: the environment comes from the
-// mission phase at the time of measurement.
-func IndicatorStatus(ind catalog.Indicator, m domain.Measurement, mission domain.Mission) domain.Status {
-	return ind.Classify(m.Value, mission.EnvironmentAt(m.MeasuredAt))
+// mission phase at the time of measurement; personal ranges win if set.
+func IndicatorStatus(ind catalog.Indicator, m domain.Measurement, mission domain.Mission, p *catalog.Profile) domain.Status {
+	return p.Classify(ind, m.Value, mission.EnvironmentAt(m.MeasuredAt))
 }
 
 // Assess computes the readiness assessment.
@@ -75,14 +79,17 @@ func Assess(in Input) Result {
 	bySystem := map[string][]IndicatorResult{}
 	fresh, anyCritical := 0, false
 	for _, ind := range in.Catalog.Indicators {
-		ir := IndicatorResult{Code: ind.Code, System: ind.System, Status: domain.StatusUnknown, Unit: ind.Unit}
+		ir := IndicatorResult{Code: ind.Code, System: ind.System, Status: domain.StatusUnknown, Unit: ind.Unit,
+			Personal: in.Profile.Personal(ind.Code), Baseline: in.Profile.Baseline(ind.Code),
+			Nominal: in.Profile.ThresholdsFor(ind, in.Mission.EnvironmentAt(in.Now)).Nominal}
 		if m, ok := in.Latest[ind.Code]; ok {
 			v, at := m.Value, m.MeasuredAt
 			ir.Value, ir.MeasuredAt = &v, &at
 			ir.Environment = in.Mission.EnvironmentAt(at)
 			if in.Now.Sub(at) <= time.Duration(ind.FreshnessHours)*time.Hour {
 				ir.Fresh = true
-				ir.Status = ind.Classify(v, ir.Environment)
+				ir.Status = in.Profile.Classify(ind, v, ir.Environment)
+				ir.Nominal = in.Profile.ThresholdsFor(ind, ir.Environment).Nominal
 				fresh++
 				anyCritical = anyCritical || ir.Status == domain.StatusCritical
 			}
@@ -111,8 +118,9 @@ func Assess(in Input) Result {
 		if n > 0 {
 			score := int(math.Round(sum / float64(n)))
 			sr.Score = &score
-			weighted += float64(score) * sys.Weight
-			totalWeight += sys.Weight
+			w := in.Profile.Weight(sys)
+			weighted += float64(score) * w
+			totalWeight += w
 		}
 		res.Systems = append(res.Systems, sr)
 	}

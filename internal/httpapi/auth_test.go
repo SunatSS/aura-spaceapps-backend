@@ -131,8 +131,8 @@ func TestCrewOverviewAndReport(t *testing.T) {
 		t.Fatalf("overview: day %d, %d members (the surgeon is not a crew member)", ov.MissionDay, len(ov.Members))
 	}
 	for _, m := range ov.Members {
-		if len(m.Trends) != 10 {
-			t.Errorf("%s: %d trend series, want 10", m.Astronaut.Name, len(m.Trends))
+		if len(m.Trends) != 15 {
+			t.Errorf("%s: %d trend series, want 15", m.Astronaut.Name, len(m.Trends))
 		}
 		if m.Astronaut.Name == "Lucas Ferreira" && (!m.Escalate || m.Warnings == 0) {
 			t.Errorf("Lucas should escalate with a warning: %+v", m)
@@ -152,7 +152,7 @@ func TestCrewOverviewAndReport(t *testing.T) {
 	}
 	path := fmt.Sprintf("/api/v1/astronauts/%d/report", lucas.ID)
 	surgeon.do(http.MethodGet, path, nil, http.StatusOK, &rep)
-	if !rep.Escalate || len(rep.Trends) != 10 || len(rep.Alerts) == 0 || rep.Alerts[0].Indicator != "spo2" || rep.Alerts[0].Direction != "below" {
+	if !rep.Escalate || len(rep.Trends) != 15 || len(rep.Alerts) == 0 || rep.Alerts[0].Indicator != "spo2" || rep.Alerts[0].Direction != "below" {
 		t.Errorf("report = %+v", rep)
 	}
 

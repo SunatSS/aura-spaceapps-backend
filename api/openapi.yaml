@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: AURA API
-  version: 0.5.0
+  version: 0.6.0
   description: |
     Astronaut Universal Readiness Assessment — health monitoring API.
     Source of truth for the backend/frontend contract. The frontend generates
@@ -173,6 +173,130 @@ paths:
               schema: { $ref: "#/components/schemas/Session" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+
+  /openapi.yaml:
+    get:
+      operationId: getOpenAPI
+      summary: This contract (Swagger UI at /api/docs/)
+      security: []
+      responses:
+        "200":
+          description: OpenAPI 3.1 document
+          content:
+            application/yaml:
+              schema: { type: string }
+
+  /astronauts/{id}/profile:
+    parameters:
+      - $ref: "#/components/parameters/AstronautId"
+    get:
+      operationId: getProfile
+      summary: Known conditions, baselines, personal ranges and weights (FR-6, FR-24)
+      responses:
+        "200":
+          description: The profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: updateProfile
+      summary: Set particularities — flight surgeon only; listed indicators and weights are replaced
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                conditions: { type: string }
+                indicators: { type: object, additionalProperties: { $ref: "#/components/schemas/PersonalIndicator" } }
+                weights: { type: object, additionalProperties: { type: number, minimum: 0, maximum: 5 }, description: 0 removes the personal weight }
+      responses:
+        "200":
+          description: The updated profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /astronauts/{id}/tasks:
+    parameters:
+      - $ref: "#/components/parameters/AstronautId"
+    get:
+      operationId: getTasks
+      summary: Today's tasks, overdue reminders, streak and badges (FR-40…FR-43)
+      responses:
+        "200":
+          description: Tasks
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tasks" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /astronauts/{id}/tasks/{code}/complete:
+    parameters:
+      - $ref: "#/components/parameters/AstronautId"
+      - { name: code, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: completeTask
+      summary: Mark a manual task (e.g. exercise) done today — own tasks only
+      responses:
+        "200":
+          description: Tasks after the change
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tasks" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: uncompleteTask
+      summary: Undo today's mark
+      responses:
+        "200":
+          description: Tasks after the change
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tasks" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /demo/environment:
+    post:
+      operationId: switchEnvironment
+      summary: Start a new mission phase in another environment now (demo, FR-4)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [environment]
+              additionalProperties: false
+              properties:
+                environment: { $ref: "#/components/schemas/EnvironmentCode" }
+      responses:
+        "200":
+          description: The mission after the switch
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurrentMission" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
 
   /astronauts:
     get:
@@ -642,7 +766,7 @@ components:
     # --- catalog ---------------------------------------------------------------
     Catalog:
       type: object
-      required: [disclaimer, thresholdsNote, hazards, risks, environments, systems, indicators, vehicleParameters]
+      required: [disclaimer, thresholdsNote, hazards, risks, environments, systems, indicators, vehicleParameters, countermeasures, schedule]
       properties:
         disclaimer: { type: string }
         thresholdsNote: { type: string, description: Ranges are illustrative — show next to thresholds }
@@ -652,6 +776,29 @@ components:
         systems: { type: array, items: { $ref: "#/components/schemas/BodySystem" } }
         indicators: { type: array, items: { $ref: "#/components/schemas/Indicator" } }
         vehicleParameters: { type: array, items: { $ref: "#/components/schemas/VehicleParameter" } }
+        countermeasures: { type: array, items: { $ref: "#/components/schemas/Countermeasure" } }
+        schedule: { type: array, items: { $ref: "#/components/schemas/ScheduleItem" } }
+
+    Countermeasure:
+      type: object
+      required: [code, title, how, risks]
+      properties:
+        code: { type: string }
+        title: { type: string }
+        how: { type: string }
+        risks: { type: array, items: { type: string }, description: NASA HRP risk codes it lowers }
+
+    ScheduleItem:
+      type: object
+      required: [code, title, every, fromHour, dueHour, indicators, manual]
+      properties:
+        code: { type: string }
+        title: { type: string }
+        every: { type: string, enum: [daily, weekly] }
+        fromHour: { type: integer }
+        dueHour: { type: integer }
+        indicators: { type: [array, "null"], items: { type: string } }
+        manual: { type: boolean }
 
     VehicleParameter:
       type: object
@@ -742,7 +889,7 @@ components:
 
     Indicator:
       type: object
-      required: [code, name, shortName, unit, system, input, scaleLabels, min, max, step, freshnessHours, hazards, risks, thresholds, about, howToMeasure, whyInSpace, guidance]
+      required: [code, name, shortName, unit, system, input, scaleLabels, min, max, step, freshnessHours, trend, hazards, risks, thresholds, about, howToMeasure, whyInSpace, guidance]
       properties:
         code: { type: string }
         name: { type: string }
@@ -762,6 +909,7 @@ components:
         max: { type: number, description: Highest accepted input value }
         step: { type: number }
         freshnessHours: { type: integer, description: A reading older than this counts as unknown }
+        trend: { type: boolean, description: Slow drift toward a limit is reported while still nominal }
         hazards: { type: array, items: { type: string } }
         risks: { type: array, items: { type: string } }
         thresholds: { $ref: "#/components/schemas/Thresholds" }
@@ -875,7 +1023,7 @@ components:
     # --- assessment ----------------------------------------------------------------
     IndicatorResult:
       type: object
-      required: [code, system, status, fresh, value, unit, measuredAt, environment]
+      required: [code, system, status, fresh, value, unit, measuredAt, environment, nominal, personal, baseline]
       properties:
         code: { type: string }
         system: { type: string }
@@ -885,6 +1033,9 @@ components:
         unit: { type: string }
         measuredAt: { type: [string, "null"], format: date-time }
         environment: { type: string }
+        nominal: { $ref: "#/components/schemas/Range" }
+        personal: { type: boolean, description: A personal range set by the flight surgeon applies }
+        baseline: { type: [number, "null"], description: Preflight value }
 
     SystemResult:
       type: object
@@ -914,7 +1065,7 @@ components:
       required: [id, rule, indicator, system, severity, title, action, basis, recheckMinutes, escalate, escalateReason, risks, parameter, supplies]
       properties:
         id: { type: string }
-        rule: { type: string, enum: [indicator_status, repeated_critical, sleep_debt, post_eva_hypoxia, low_mood_streak, cabin_air] }
+        rule: { type: string, enum: [indicator_status, repeated_critical, sleep_debt, post_eva_hypoxia, low_mood_streak, cabin_air, trend] }
         indicator: { type: string }
         system: { type: string }
         severity: { $ref: "#/components/schemas/Status" }
@@ -998,7 +1149,7 @@ components:
 
     CrewMember:
       type: object
-      required: [astronaut, readiness, warnings, cautions, escalate, recommendations, trends]
+      required: [astronaut, readiness, warnings, cautions, escalate, recommendations, trends, tasks]
       properties:
         astronaut: { $ref: "#/components/schemas/Astronaut" }
         readiness: { $ref: "#/components/schemas/Assessment" }
@@ -1007,6 +1158,14 @@ components:
         escalate: { type: boolean }
         recommendations: { type: array, items: { $ref: "#/components/schemas/Recommendation" } }
         trends: { type: array, items: { $ref: "#/components/schemas/TrendSeries" }, description: Last 7 days, one series per catalog indicator }
+        tasks:
+          type: object
+          required: [done, total, overdue, streak]
+          properties:
+            done: { type: integer }
+            total: { type: integer }
+            overdue: { type: integer }
+            streak: { type: integer }
 
     CrewOverview:
       type: object
@@ -1284,3 +1443,60 @@ components:
               alg: { type: integer }
         excludeCredentialIds: { type: array, items: { type: string } }
         timeout: { type: integer }
+
+    # --- profile and tasks (P1) -----------------------------------------------------
+    PersonalIndicator:
+      type: object
+      properties:
+        baseline: { type: [number, "null"], description: Preflight value }
+        thresholds:
+          description: Personal ranges; null = standard catalog ranges
+          oneOf:
+            - $ref: "#/components/schemas/Thresholds"
+            - type: "null"
+        note: { type: string }
+
+    Profile:
+      type: object
+      required: [conditions, indicators, weights]
+      properties:
+        conditions: { type: string }
+        indicators: { type: object, additionalProperties: { $ref: "#/components/schemas/PersonalIndicator" } }
+        weights: { type: object, additionalProperties: { type: number }, description: System code → weight in the Readiness Score }
+
+    Task:
+      type: object
+      required: [code, title, every, manual, indicators, missing, due, done, doneAt, overdue]
+      properties:
+        code: { type: string }
+        title: { type: string }
+        every: { type: string, enum: [daily, weekly] }
+        manual: { type: boolean }
+        indicators: { type: array, items: { type: string } }
+        missing: { type: array, items: { type: string }, description: Indicators still without a reading in the window }
+        due: { type: string, format: date-time }
+        done: { type: boolean }
+        doneAt: { type: [string, "null"], format: date-time }
+        overdue: { type: boolean }
+
+    Badge:
+      type: object
+      required: [code, title, description, earnedAt]
+      properties:
+        code: { type: string }
+        title: { type: string }
+        description: { type: string }
+        earnedAt: { type: string, format: date-time }
+
+    Tasks:
+      type: object
+      required: [day, tasks, done, total, overdue, streak, bestStreak, badges]
+      properties:
+        day: { type: string, description: Mission-UTC day, YYYY-MM-DD }
+        tasks: { type: array, items: { $ref: "#/components/schemas/Task" } }
+        done: { type: integer }
+        total: { type: integer }
+        overdue: { type: integer }
+        streak: { type: integer, description: Days in a row with every daily task done }
+        bestStreak: { type: integer }
+        badges: { type: array, items: { $ref: "#/components/schemas/Badge" } }

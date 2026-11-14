@@ -28,10 +28,10 @@ type measurementView struct {
 	Environment domain.Environment `json:"environment"`
 }
 
-func (h *handlers) view(m domain.Measurement, mission domain.Mission) measurementView {
+func (h *handlers) view(m domain.Measurement, mission domain.Mission, p *catalog.Profile) measurementView {
 	v := measurementView{Measurement: m, MissionDay: mission.Day(m.MeasuredAt), Environment: mission.EnvironmentAt(m.MeasuredAt), Status: domain.StatusUnknown}
 	if ind, ok := h.deps.Catalog.Indicator(m.Indicator); ok {
-		v.Status = readiness.IndicatorStatus(ind, m, mission)
+		v.Status = readiness.IndicatorStatus(ind, m, mission, p)
 	}
 	return v
 }
@@ -60,9 +60,14 @@ func (h *handlers) listMeasurements(w http.ResponseWriter, r *http.Request) {
 		h.internal(w, "list measurements", err)
 		return
 	}
+	profile, err := h.deps.DB.Q().Profile(r.Context(), a.ID)
+	if err != nil {
+		h.internal(w, "profile", err)
+		return
+	}
 	views := make([]measurementView, len(ms))
 	for i, x := range ms {
-		views[i] = h.view(x, m)
+		views[i] = h.view(x, m, profile)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"measurements": views})
 }
@@ -159,9 +164,14 @@ func (h *handlers) createMeasurements(w http.ResponseWriter, r *http.Request) {
 		h.internal(w, "create measurements", err)
 		return
 	}
+	profile, err := h.deps.DB.Q().Profile(r.Context(), a.ID)
+	if err != nil {
+		h.internal(w, "profile", err)
+		return
+	}
 	views := make([]measurementView, len(ms))
 	for i, x := range ms {
-		views[i] = h.view(x, m)
+		views[i] = h.view(x, m, profile)
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"measurements": views})
 }

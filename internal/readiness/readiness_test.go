@@ -30,6 +30,7 @@ func healthy() map[string]domain.Measurement {
 	vals := map[string]float64{
 		"heart_rate": 66, "bp_systolic": 118, "bp_diastolic": 76, "spo2": 98, "body_temp": 36.7,
 		"glucose": 95, "sleep_hours": 7.5, "mood": 4, "stress": 2, "headache": 1,
+		"body_mass_change": -0.5, "exercise_minutes": 130, "water_intake": 2.3, "radiation_dose": 0.2, "vision_change": 0,
 	}
 	out := map[string]domain.Measurement{}
 	for k, v := range vals {
@@ -65,8 +66,8 @@ func TestAssess(t *testing.T) {
 				if r.Completeness != 1 {
 					t.Errorf("completeness = %v, want 1", r.Completeness)
 				}
-				if s := system(r, "musculoskeletal"); s.Status != domain.StatusUnknown || s.Score != nil {
-					t.Errorf("system without indicators should be unknown, got %+v", s)
+				if s := system(r, "musculoskeletal"); s.Status != domain.StatusNominal || len(s.Indicators) != 2 {
+					t.Errorf("musculoskeletal = %+v, want nominal with body mass and exercise", s)
 				}
 			},
 		},
@@ -77,8 +78,8 @@ func TestAssess(t *testing.T) {
 				set(m, "mood", 3)
 				set(m, "stress", 3)
 			},
-			// systems with data: 100,100,100,100,60 (behavioral),100 (eyes) → 93
-			wantScore:  ptr(93),
+			// all 7 systems have data: six at 100, behavioral at 60 → 94
+			wantScore:  ptr(94),
 			wantStatus: domain.StatusNominal,
 			check: func(t *testing.T, r Result) {
 				if s := system(r, "behavioral"); s.Status != domain.StatusCaution || *s.Score != 60 {
@@ -108,8 +109,8 @@ func TestAssess(t *testing.T) {
 				if s.Status != domain.StatusUnknown || s.Indicators[0].Fresh || s.Indicators[0].Value == nil {
 					t.Errorf("respiratory = %+v, want unknown with stale value kept", s)
 				}
-				if r.Completeness != 0.9 {
-					t.Errorf("completeness = %v, want 0.9", r.Completeness)
+				if r.Completeness != 0.93 {
+					t.Errorf("completeness = %v, want 0.93", r.Completeness)
 				}
 			},
 		},

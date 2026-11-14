@@ -109,7 +109,7 @@ func (s Queries) DeleteSession(ctx context.Context, tokenHash string) error {
 // DeleteAll removes every mission, member, reading, activity and session —
 // used to reset the demo before seeding it again (FR-62).
 func (s Queries) DeleteAll(ctx context.Context) error {
-	for _, table := range []string{"webauthn_challenges", "passkeys", "sessions", "supply_transactions", "supplies", "telemetry", "modules", "measurements", "activities", "astronauts", "mission_phases", "missions"} {
+	for _, table := range []string{"task_completions", "personal_weights", "personal_indicators", "webauthn_challenges", "passkeys", "sessions", "supply_transactions", "supplies", "telemetry", "modules", "measurements", "activities", "astronauts", "mission_phases", "missions"} {
 		if _, err := s.q.ExecContext(ctx, "DELETE FROM "+table); err != nil {
 			return fmt.Errorf("storage: clear %s: %w", table, err)
 		}

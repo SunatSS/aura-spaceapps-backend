@@ -30,7 +30,11 @@ type Catalog struct {
 	Indicators     []Indicator   `yaml:"indicators" json:"indicators"`
 	// Life-support parameters of the vehicle (REQUIREMENTS §5.9).
 	VehicleParameters []VehicleParameter `yaml:"vehicle_parameters" json:"vehicleParameters"`
-	Rules             []Rule             `yaml:"rules" json:"-"`
+	// What protects against each HRP risk (FR-34).
+	Countermeasures []Countermeasure `yaml:"countermeasures" json:"countermeasures"`
+	// Daily and weekly measuring schedule (FR-40).
+	Schedule []ScheduleItem `yaml:"schedule" json:"schedule"`
+	Rules    []Rule         `yaml:"rules" json:"-"`
 
 	indicatorIdx   map[string]int
 	systemIdx      map[string]int
@@ -85,6 +89,8 @@ func (r Range) Contains(v float64) bool {
 // String renders the range for people: "90–129", "≥ 95", "≤ 37.5" or "any".
 func (r Range) String() string {
 	switch {
+	case r.Min != nil && r.Max != nil && *r.Min == *r.Max:
+		return FormatNumber(*r.Min)
 	case r.Min != nil && r.Max != nil:
 		return FormatNumber(*r.Min) + "–" + FormatNumber(*r.Max)
 	case r.Min != nil:
@@ -165,9 +171,11 @@ type Indicator struct {
 	Max            float64      `yaml:"max" json:"max"`
 	Step           float64      `yaml:"step" json:"step"`
 	FreshnessHours int          `yaml:"freshness_hours" json:"freshnessHours"`
-	Hazards        []string     `yaml:"hazards" json:"hazards"`
-	Risks          []string     `yaml:"risks" json:"risks"`
-	Thresholds     Thresholds   `yaml:"thresholds" json:"thresholds"`
+	// Trend: watch slow drift toward a limit while still nominal (FR-23).
+	Trend      bool       `yaml:"trend" json:"trend"`
+	Hazards    []string   `yaml:"hazards" json:"hazards"`
+	Risks      []string   `yaml:"risks" json:"risks"`
+	Thresholds Thresholds `yaml:"thresholds" json:"thresholds"`
 	// Optional per-environment overrides of Thresholds.
 	EnvironmentThresholds map[domain.Environment]Thresholds `yaml:"environment_thresholds" json:"environmentThresholds,omitempty"`
 	About                 string                            `yaml:"about" json:"about"`
@@ -221,6 +229,31 @@ type VehicleParameter struct {
 	Thresholds       Thresholds `yaml:"thresholds" json:"thresholds"`
 	About            string     `yaml:"about" json:"about"`
 	Guidance         Guidance   `yaml:"guidance" json:"guidance"`
+}
+
+// Countermeasure is an action that lowers an HRP risk.
+type Countermeasure struct {
+	Code  string   `yaml:"code" json:"code"`
+	Title string   `yaml:"title" json:"title"`
+	How   string   `yaml:"how" json:"how"`
+	Risks []string `yaml:"risks" json:"risks"`
+}
+
+// Schedule frequencies.
+const (
+	EveryDaily  = "daily"
+	EveryWeekly = "weekly"
+)
+
+// ScheduleItem is a recurring task: readings to take or a manual task.
+type ScheduleItem struct {
+	Code       string   `yaml:"code" json:"code"`
+	Title      string   `yaml:"title" json:"title"`
+	Every      string   `yaml:"every" json:"every"`           // daily | weekly
+	FromHour   int      `yaml:"from_hour" json:"fromHour"`    // window opens (mission UTC)
+	DueHour    int      `yaml:"due_hour" json:"dueHour"`      // overdue after
+	Indicators []string `yaml:"indicators" json:"indicators"` // done when all have a reading in the window
+	Manual     bool     `yaml:"manual" json:"manual"`         // marked done by the crew member
 }
 
 // FormatValue renders a reading with its unit: "3.8 mmHg".
@@ -400,6 +433,32 @@ func (c *Catalog) validate() error {
 			if a.Title == "" || a.Action == "" {
 				fail("indicator %s: guidance needs title and action for caution and critical", ind.Code)
 				break
+			}
+		}
+	}
+	for _, cm := range c.Countermeasures {
+		if cm.Code == "" || cm.Title == "" || cm.How == "" || len(cm.Risks) == 0 {
+			fail("countermeasure %q: code, title, how and risks are required", cm.Code)
+		}
+		for _, r := range cm.Risks {
+			if !risks[r] {
+				fail("countermeasure %s: unknown risk %q", cm.Code, r)
+			}
+		}
+	}
+	for _, t := range c.Schedule {
+		if t.Code == "" || t.Title == "" || (t.Every != EveryDaily && t.Every != EveryWeekly) {
+			fail("schedule %q: code, title and every (daily|weekly) are required", t.Code)
+		}
+		if t.FromHour < 0 || t.DueHour > 24 || t.FromHour >= t.DueHour {
+			fail("schedule %s: need 0 <= from_hour < due_hour <= 24", t.Code)
+		}
+		if t.Manual == (len(t.Indicators) > 0) {
+			fail("schedule %s: either manual or indicators", t.Code)
+		}
+		for _, code := range t.Indicators {
+			if _, ok := c.indicatorIdx[code]; !ok {
+				fail("schedule %s: unknown indicator %q", t.Code, code)
 			}
 		}
 	}

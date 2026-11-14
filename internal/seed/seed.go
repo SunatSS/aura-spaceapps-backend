@@ -43,6 +43,18 @@ var modules = []struct{ code, name string }{
 	{"airlock", "Airlock"},
 }
 
+// bodyMass is the weekly change from preflight mass, %: Lucas, the EVA lead,
+// is slowly losing mass — still nominal, but trending toward the limit (FR-23).
+func bodyMass(idx, w int) float64 {
+	switch idx {
+	case ferreira:
+		return -0.5 - float64(w-2)*0.064
+	case sato:
+		return 0.3
+	}
+	return -0.8
+}
+
 // headache is the daily check-in score (1 none … 5 severe): Amina, sleeping
 // in the habitat during the CO₂ episode, reports a moderate headache.
 func headache(idx, w int) float64 {
@@ -135,7 +147,7 @@ func Run(ctx context.Context, db *storage.DB, cat *catalog.Catalog, now time.Tim
 // Fill inserts the demo mission using q, e.g. inside a transaction that has
 // just cleared the database (demo reset, FR-62).
 func Fill(ctx context.Context, q storage.Queries, cat *catalog.Catalog, now time.Time) error {
-	g := generator{cat: cat, now: now.UTC(), rnd: rand.New(rand.NewPCG(2026, 1115))}
+	g := generator{cat: cat, now: now.UTC(), rnd: rand.New(rand.NewPCG(2026, 1115)), extra: rand.New(rand.NewPCG(2026, 1116))}
 	return g.run(ctx, q)
 }
 
@@ -158,10 +170,11 @@ func account(ctx context.Context, q storage.Queries, a *domain.Astronaut) error 
 }
 
 type generator struct {
-	cat *catalog.Catalog
-	now time.Time
-	rnd *rand.Rand
-	err error
+	cat   *catalog.Catalog
+	now   time.Time
+	rnd   *rand.Rand
+	extra *rand.Rand // P1 indicators: separate source keeps the scripted P0 values unchanged
+	err   error
 }
 
 func (g *generator) run(ctx context.Context, q storage.Queries) error {
@@ -247,6 +260,23 @@ func (g *generator) run(ctx context.Context, q storage.Queries) error {
 			add("mood", v.mood, checkin, domain.SourceQuestionnaire, "", nil)
 			add("stress", v.stress, checkin, domain.SourceQuestionnaire, "", nil)
 			add("headache", headache(idx, w), checkin, domain.SourceQuestionnaire, "", nil)
+			x := func(sd float64) float64 { return g.extra.NormFloat64() * sd }
+			add("exercise_minutes", 135+x(10), checkin, domain.SourceQuestionnaire, "", nil)
+			add("water_intake", 2.4+x(0.15), checkin, domain.SourceQuestionnaire, "", nil)
+			dose := 0.22 + x(0.02) // Mars surface
+			if w < landingDay {
+				dose = 0.48 + x(0.03) // deep-space transit
+			}
+			if contains(evaDays[w], idx) {
+				dose += 0.05
+			}
+			add("radiation_dose", dose, date.Add(21*time.Hour+5*time.Minute), domain.SourceDevice, "", nil)
+			if w%7 == 2 { // weekly weigh-in
+				add("body_mass_change", bodyMass(idx, w)+x(0.05), morning.Add(20*time.Minute), domain.SourceManual, "", nil)
+			}
+			if w%7 == 3 { // weekly vision card test
+				add("vision_change", 0, checkin, domain.SourceQuestionnaire, "", nil)
+			}
 
 			evening := date.Add(21 * time.Hour)
 			eveningHR := v.hr + 4 + g.rnd.NormFloat64()*3
@@ -285,6 +315,9 @@ func (g *generator) run(ctx context.Context, q storage.Queries) error {
 		if err := q.CreateMeasurements(ctx, ms); err != nil {
 			return err
 		}
+	}
+	if err := g.profiles(ctx, q, mission, windowStart); err != nil {
+		return err
 	}
 	if err := g.telemetry(ctx, q, mission, windowStart, landingAt); err != nil {
 		return err

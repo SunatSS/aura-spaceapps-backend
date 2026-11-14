@@ -10,6 +10,7 @@ package guidance
 import (
 	"cmp"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"time"
@@ -28,6 +29,7 @@ const (
 	RulePostEVAHypoxia   = "post_eva_hypoxia"
 	RuleLowMoodStreak    = "low_mood_streak"
 	RuleCabinAir         = "cabin_air"
+	RuleTrend            = "trend"
 )
 
 // Rule parameters.
@@ -35,8 +37,13 @@ const (
 	sleepDebtNights     = 3              // consecutive short nights to trigger sleep_debt
 	postEVAWindow       = 48 * time.Hour // how long a post-EVA reading stays relevant
 	lowMoodStreakDays   = 2
-	sleepNominalMinimum = 7.0 // fallback if the catalog has no lower nominal bound
-	sleepSevereMinimum  = 6.0 // fallback if the catalog has no lower caution bound
+	trendWindow         = 21 * 24 * time.Hour // readings the trend is fitted on
+	trendHorizon        = 14.0                // days ahead: warn if the limit is crossed by then
+	trendMinPoints      = 3
+	trendMinSpan        = 10.0 // days of data needed for a trend
+	trendMinShare       = 0.1  // drift over the window must be ≥ 10 % of the nominal width
+	sleepNominalMinimum = 7.0  // fallback if the catalog has no lower nominal bound
+	sleepSevereMinimum  = 6.0  // fallback if the catalog has no lower caution bound
 )
 
 type Recommendation struct {
@@ -81,7 +88,10 @@ type Input struct {
 	Assessment readiness.Result
 	History    []domain.Measurement  // recent readings (e.g. last 7 days), any order
 	Cabin      *vehicle.ModuleResult // the module the astronaut is in, if known (FR-83)
-	Now        time.Time
+	Profile    *catalog.Profile      // personal ranges (FR-24); nil = standard
+	// One-way signal delay to Earth now, for escalation texts (FR-33).
+	CommDelayMinS int
+	Now           time.Time
 }
 
 // Evaluate returns recommendations ordered by severity, escalations first.
@@ -104,7 +114,9 @@ func Evaluate(in Input) []Recommendation {
 	e.lowMoodStreak()
 	e.indicatorStatus()
 	e.cabinAir()
+	e.trend()
 	e.addCabinContext()
+	e.addEarthDelay()
 
 	slices.SortStableFunc(e.out, func(a, b Recommendation) int {
 		if c := cmp.Compare(b.Severity.Severity(), a.Severity.Severity()); c != 0 {
@@ -138,7 +150,7 @@ func (e *evaluator) fresh(code string) bool { return e.current[code].Fresh }
 
 func (e *evaluator) status(code string, m domain.Measurement) domain.Status {
 	ind, _ := e.in.Catalog.Indicator(code)
-	return readiness.IndicatorStatus(ind, m, e.in.Mission)
+	return readiness.IndicatorStatus(ind, m, e.in.Mission, e.in.Profile)
 }
 
 func (e *evaluator) fromRule(ruleID, code string, severity domain.Status, basis string, escalate bool) Recommendation {
@@ -257,7 +269,7 @@ func (e *evaluator) indicatorStatus() {
 		if ir.Status == domain.StatusCritical {
 			advice = ind.Guidance.Critical
 		}
-		thr := ind.ThresholdsFor(ir.Environment)
+		thr := e.in.Profile.ThresholdsFor(ind, ir.Environment)
 		r := Recommendation{
 			ID: RuleIndicatorStatus + ":" + ind.Code, Rule: RuleIndicatorStatus, Indicator: ind.Code, System: ind.System,
 			Severity: ir.Status, Title: advice.Title, Action: advice.Action,
@@ -287,8 +299,9 @@ func (e *evaluator) indicatorStatus() {
 // card: it is one measurement and one action for the crew member.
 func (e *evaluator) mergeBloodPressure() {
 	const sys, dia = "bp_systolic", "bp_diastolic"
-	si := slices.IndexFunc(e.out, func(r Recommendation) bool { return r.Rule != RuleSleepDebt && r.Indicator == sys })
-	di := slices.IndexFunc(e.out, func(r Recommendation) bool { return r.Rule != RuleSleepDebt && r.Indicator == dia })
+	statusRule := func(r Recommendation) bool { return r.Rule == RuleIndicatorStatus || r.Rule == RuleRepeatedCritical }
+	si := slices.IndexFunc(e.out, func(r Recommendation) bool { return statusRule(r) && r.Indicator == sys })
+	di := slices.IndexFunc(e.out, func(r Recommendation) bool { return statusRule(r) && r.Indicator == dia })
 	if si < 0 || di < 0 {
 		return
 	}
@@ -305,7 +318,7 @@ func (e *evaluator) mergeBloodPressure() {
 	if sv.Value != nil && dv.Value != nil {
 		base.Basis = fmt.Sprintf("Blood pressure: %s/%s %s (nominal %s / %s).",
 			num(*sv.Value), num(*dv.Value), sInd.Unit,
-			sInd.ThresholdsFor(sv.Environment).Nominal, dInd.ThresholdsFor(dv.Environment).Nominal)
+			e.in.Profile.ThresholdsFor(sInd, sv.Environment).Nominal, e.in.Profile.ThresholdsFor(dInd, dv.Environment).Nominal)
 	}
 	keep, drop := si, di
 	if base.Indicator == dia {
@@ -367,6 +380,107 @@ func (e *evaluator) addCabinContext() {
 	for i, r := range e.out {
 		if r.Indicator == "spo2" || r.Indicator == "headache" {
 			e.out[i].Basis += note
+		}
+	}
+}
+
+// trend: a nominal indicator drifting steadily toward a limit that it will
+// cross within trendHorizon days at the current rate (FR-23) — Caution while
+// still in range, e.g. slow body-mass loss. The line is fitted by least
+// squares over at least trendMinSpan, and the drift must be a real share of the
+// nominal range, so day-to-day noise is not reported.
+func (e *evaluator) trend() {
+	rule, _ := e.in.Catalog.Rule(RuleTrend)
+	for _, ind := range e.in.Catalog.Indicators {
+		ir := e.current[ind.Code]
+		if !ind.Trend || !ir.Fresh || ir.Status != domain.StatusNominal {
+			continue
+		}
+		var pts []domain.Measurement
+		for _, m := range e.history[ind.Code] { // newest first
+			if e.in.Now.Sub(m.MeasuredAt) <= trendWindow {
+				pts = append(pts, m)
+			}
+		}
+		if len(pts) < trendMinPoints {
+			continue
+		}
+		oldest := pts[len(pts)-1]
+		span := e.in.Now.Sub(oldest.MeasuredAt).Hours() / 24
+		if span < trendMinSpan {
+			continue
+		}
+		slope, intercept := fitLine(pts, oldest.MeasuredAt)
+		// Fitted value at the latest reading: weekly readings are not extrapolated to now.
+		sinceLast := e.in.Now.Sub(pts[0].MeasuredAt).Hours() / 24
+		fitted := intercept + slope*(span-sinceLast)
+		thr := e.in.Profile.ThresholdsFor(ind, ir.Environment).Nominal
+		if !thr.Contains(fitted) {
+			continue
+		}
+		ahead := trendHorizon + sinceLast
+		var limit *float64
+		switch {
+		case slope < 0 && thr.Min != nil && fitted+slope*ahead < *thr.Min:
+			limit = thr.Min
+		case slope > 0 && thr.Max != nil && fitted+slope*ahead > *thr.Max:
+			limit = thr.Max
+		}
+		if limit == nil || math.Abs(slope*span) < trendMinShare*rangeWidth(thr, ind) {
+			continue
+		}
+		days := int(math.Max(1, math.Ceil((*limit-fitted)/slope-sinceLast)))
+		ago := fmt.Sprintf("%d days ago", int(math.Round(span)))
+		if weeks := int(math.Round(span / 7)); weeks >= 2 {
+			ago = fmt.Sprintf("%d weeks ago", weeks)
+		}
+		e.out = append(e.out, Recommendation{
+			ID: RuleTrend + ":" + ind.Code, Rule: RuleTrend, Indicator: ind.Code, System: ind.System,
+			Severity: domain.StatusCaution, Title: ind.Name + ": " + strings.ToLower(rule.Title[:1]) + rule.Title[1:], Action: rule.Action,
+			Basis: fmt.Sprintf("%s: %s now, %s %s; at this rate it leaves the nominal range (%s) in about %d days.",
+				ind.Name, ind.FormatValue(pts[0].Value), ind.FormatValue(oldest.Value), ago, thr, days),
+			Risks: ind.Risks,
+		})
+	}
+}
+
+// rangeWidth is the width of the nominal range; for one-sided ranges, the
+// distance from the limit to the end of the possible input range.
+func rangeWidth(r catalog.Range, ind catalog.Indicator) float64 {
+	lo, hi := ind.Min, ind.Max
+	if r.Min != nil {
+		lo = *r.Min
+	}
+	if r.Max != nil {
+		hi = *r.Max
+	}
+	return hi - lo
+}
+
+// fitLine is the least-squares line of value over days since t0.
+func fitLine(ms []domain.Measurement, t0 time.Time) (slope, intercept float64) {
+	var n, sx, sy, sxx, sxy float64
+	for _, m := range ms {
+		x := m.MeasuredAt.Sub(t0).Hours() / 24
+		n, sx, sy, sxx, sxy = n+1, sx+x, sy+m.Value, sxx+x*x, sxy+x*m.Value
+	}
+	if d := n*sxx - sx*sx; d != 0 {
+		slope = (n*sxy - sx*sy) / d
+	}
+	return slope, (sy - slope*sx) / n
+}
+
+// addEarthDelay tells the crew how long a reply from Earth takes when they are
+// asked to report (FR-33): act on the protocol meanwhile.
+func (e *evaluator) addEarthDelay() {
+	if e.in.CommDelayMinS < 60 {
+		return
+	}
+	roundTrip := int(math.Round(float64(2*e.in.CommDelayMinS) / 60))
+	note := fmt.Sprintf(" A reply from Earth takes at least %d min (signal both ways) — follow this protocol meanwhile.", roundTrip)
+	for i, r := range e.out {
+		if r.Escalate {
+			e.out[i].Action += note
 		}
 	}
 }

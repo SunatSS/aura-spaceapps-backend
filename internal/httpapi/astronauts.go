@@ -14,8 +14,9 @@ import (
 	"aura/internal/storage"
 )
 
-// guidanceHistory is how far back guidance rules look for streaks.
-const guidanceHistory = 7 * 24 * time.Hour
+// guidanceHistory is how far back guidance rules look: streaks need a week,
+// trends (FR-23) three weeks, weekly readings such as body mass a month.
+const guidanceHistory = 30 * 24 * time.Hour
 
 func (h *handlers) listAstronauts(w http.ResponseWriter, r *http.Request) {
 	m, ok := h.loadMission(w, r)
@@ -94,7 +95,12 @@ func (h *handlers) assess(w http.ResponseWriter, r *http.Request) (assessment, b
 		return assessment{}, false
 	}
 	now := h.deps.Now().UTC()
-	res := readiness.Assess(readiness.Input{Catalog: h.deps.Catalog, Mission: m, Latest: latest, Now: now})
+	profile, err := h.deps.DB.Q().Profile(r.Context(), a.ID)
+	if err != nil {
+		h.internal(w, "profile", err)
+		return assessment{}, false
+	}
+	res := readiness.Assess(readiness.Input{Catalog: h.deps.Catalog, Mission: m, Latest: latest, Profile: profile, Now: now})
 	return assessment{astronaut: a, mission: m, now: now, result: res}, true
 }
 

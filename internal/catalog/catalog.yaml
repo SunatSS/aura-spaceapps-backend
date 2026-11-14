@@ -238,6 +238,7 @@ indicators:
     max: 260
     step: 1
     freshness_hours: 24
+    trend: true
     hazards: [gravity]
     risks: [cardiovascular]
     # Source: general clinical reference (AHA categories: normal <120,
@@ -275,6 +276,7 @@ indicators:
     max: 160
     step: 1
     freshness_hours: 24
+    trend: true
     hazards: [gravity]
     risks: [cardiovascular]
     # Source: general clinical reference (AHA: normal <80, stage 1 80–89,
@@ -416,6 +418,7 @@ indicators:
     max: 24
     step: 0.25
     freshness_hours: 24
+    trend: true
     hazards: [isolation, hostile_environment]
     risks: [sleep, behavioral]
     # Source: adult sleep recommendation 7–9 h (AASM / National Sleep Foundation).
@@ -553,6 +556,269 @@ indicators:
         action: Stop strenuous work, move to a module with nominal CO₂, check your vision for changes and report it at the next medical conference.
         recheck_minutes: 60
         escalate: true
+  - code: body_mass_change
+    name: Body mass change from preflight
+    short_name: Body mass
+    unit: '%'
+    system: musculoskeletal
+    input: number
+    min: -30
+    max: 30
+    step: 0.1
+    freshness_hours: 192
+    trend: true
+    hazards: [gravity, distance]
+    risks: [nutrition, bone, fitness]
+    # Illustrative: ISS crews lose ~1–5 % of body mass; > 5 % needs a nutrition review.
+    thresholds:
+      nominal: {min: -2, max: 2}
+      caution: {min: -5, max: 5}
+    about: Change of body mass compared with your preflight mass, in percent.
+    how_to_measure:
+      - Weigh yourself once a week, in the morning, after the toilet and before breakfast.
+      - On Mars use the habitat scale; in weightlessness the mass-measurement device.
+    why_in_space: Losing mass means you eat less than you burn — muscles and bones pay for it, and that cannot be fixed quickly far from Earth.
+    guidance:
+      caution:
+        title: Body mass is changing
+        action: Log every meal for 3 days, add an extra snack and review the menu with the flight surgeon.
+        recheck_minutes: 0
+        escalate: false
+      critical:
+        title: Large body mass change
+        action: Discuss a nutrition plan with the flight surgeon at the next conference and weigh yourself every 3 days.
+        recheck_minutes: 0
+        escalate: true
+  - code: exercise_minutes
+    name: Exercise yesterday
+    short_name: Exercise
+    unit: min
+    system: musculoskeletal
+    input: number
+    min: 0
+    max: 600
+    step: 5
+    freshness_hours: 36
+    trend: true
+    hazards: [gravity]
+    risks: [bone, fitness, cardiovascular]
+    # Illustrative: ISS crews plan about 2.5 h of exercise a day.
+    thresholds:
+      nominal: {min: 120, max: null}
+      caution: {min: 60, max: null}
+    about: Minutes of planned exercise (resistance, treadmill, cycle) yesterday.
+    how_to_measure:
+      - Answer in the morning check-in from your exercise log for yesterday.
+    why_in_space: Low gravity removes the daily load that keeps bones and muscles strong; exercise is the main countermeasure.
+    guidance:
+      caution:
+        title: Less exercise than planned
+        action: Make up the missing time today — resistance first, then aerobic.
+        recheck_minutes: 0
+        escalate: false
+      critical:
+        title: Exercise was skipped
+        action: Schedule a full exercise session today and tell the commander if the workload does not allow it.
+        recheck_minutes: 0
+        escalate: false
+  - code: water_intake
+    name: Water yesterday
+    short_name: Water
+    unit: L
+    system: metabolic
+    input: number
+    min: 0
+    max: 10
+    step: 0.1
+    freshness_hours: 36
+    hazards: [hostile_environment]
+    risks: [nutrition, bone]
+    # Illustrative: 2–2.5 L/day; low intake raises the kidney-stone risk of bone loss.
+    thresholds:
+      nominal: {min: 2.0, max: null}
+      caution: {min: 1.5, max: null}
+    about: How much you drank yesterday, in litres.
+    how_to_measure:
+      - Answer in the morning check-in from your drink bag count for yesterday.
+    why_in_space: Calcium from bone loss can form kidney stones; drinking enough is the simplest protection.
+    guidance:
+      caution:
+        title: Drinking too little
+        action: Keep a drink bag with you and aim for 2.5 L today.
+        recheck_minutes: 0
+        escalate: false
+      critical:
+        title: Very low water intake
+        action: Drink 500 ml now and spread another 2 L over the day; tell the flight surgeon about any flank pain.
+        recheck_minutes: 0
+        escalate: false
+  - code: radiation_dose
+    name: Personal radiation dose, last 24 h
+    short_name: Dose
+    unit: mSv
+    system: immune
+    input: number
+    min: 0
+    max: 1000
+    step: 0.01
+    freshness_hours: 36
+    hazards: [radiation]
+    risks: [radiation_cancer, immune]
+    # Illustrative: MSL RAD measured ~0.6 mSv/day in transit and ~0.2 mSv/day on
+    # the surface; a solar particle event can add tens of mSv.
+    thresholds:
+      nominal: {min: null, max: 1.0}
+      caution: {min: null, max: 2.0}
+    about: Dose recorded by your personal dosimeter over the last 24 hours.
+    how_to_measure:
+      - Read the personal dosimeter in the evening, or let it send the value automatically.
+    why_in_space: Outside Earth's magnetic field, cosmic rays and solar storms add a dose that raises the lifetime cancer risk.
+    guidance:
+      caution:
+        title: Radiation dose above background
+        action: Check the module dose rate on the Vehicle display, limit time near the hull and postpone EVAs.
+        recheck_minutes: 0
+        escalate: false
+      critical:
+        title: High radiation dose
+        action: Go to the storm shelter, stay until the all-clear and report the dose to the flight surgeon.
+        recheck_minutes: 60
+        escalate: true
+  - code: vision_change
+    name: Vision change
+    short_name: Vision
+    unit: score
+    system: eyes
+    input: scale
+    min: 0
+    max: 3
+    step: 1
+    freshness_hours: 192
+    hazards: [gravity]
+    risks: [sans]
+    scale_labels:
+      - {value: 0, label: None}
+      - {value: 1, label: Slight}
+      - {value: 2, label: Noticeable}
+      - {value: 3, label: Marked}
+    # Self-report scale; bands chosen for the prototype.
+    thresholds:
+      nominal: {min: 0, max: 0}
+      caution: {min: 0, max: 1}
+    about: Any change in near or far vision since last week, from 0 (none) to 3 (marked).
+    how_to_measure:
+      - Once a week, read the near and far vision cards at the marked distance, one eye at a time.
+    why_in_space: Fluid shifts toward the head can change the shape of the eye (SANS); early changes are easy to miss.
+    guidance:
+      caution:
+        title: Slight vision change
+        action: Repeat the vision card test tomorrow and note which eye and distance.
+        recheck_minutes: 0
+        escalate: false
+      critical:
+        title: Noticeable vision change
+        action: Do the full eye exam procedure and report it to the flight surgeon at the next conference.
+        recheck_minutes: 0
+        escalate: true
+
+# --- Countermeasures (FR-34): what protects against each NASA HRP risk -------------
+countermeasures:
+  - code: resistance_exercise
+    title: Resistance exercise
+    how: Squats, deadlifts and heel raises on the resistance device, about 1 h a day, 6 days a week.
+    risks: [bone, fitness]
+  - code: aerobic_exercise
+    title: Aerobic exercise
+    how: Treadmill or cycle intervals, 30–45 min a day, keeping heart rate in the prescribed zone.
+    risks: [fitness, cardiovascular]
+  - code: hydration
+    title: Hydration and diet
+    how: 2–2.5 L of water a day, enough calories and vitamin D; limit salt.
+    risks: [nutrition, bone]
+  - code: sleep_hygiene
+    title: Sleep hygiene
+    how: A fixed sleep window, dark and quiet quarters, no screens or caffeine before sleep, light exposure after waking.
+    risks: [sleep, behavioral]
+  - code: private_conference
+    title: Private conferences and leisure
+    how: Weekly private psychological conference, family messages, personal time protected in the schedule.
+    risks: [behavioral, teamwork]
+  - code: crew_briefings
+    title: Crew briefings
+    how: Daily planning conference and an open debrief after each EVA.
+    risks: [teamwork]
+  - code: prebreathe
+    title: EVA prebreathe protocol
+    how: Breathe pure oxygen before an EVA to wash out nitrogen; check for joint pain afterwards.
+    risks: [decompression, eva, hypoxia]
+  - code: cabin_air_checks
+    title: Cabin air monitoring
+    how: Keep fans on, check ppO₂ and ppCO₂ where you sleep and work; move if CO₂ stays above 3 mmHg.
+    risks: [hypoxia, sans]
+  - code: storm_shelter
+    title: Radiation shelter and dosimetry
+    how: Wear the personal dosimeter; go to the storm shelter on a solar particle event alert.
+    risks: [radiation_cancer, immune]
+  - code: hygiene
+    title: Hygiene and surface cleaning
+    how: Hand hygiene before meals, weekly surface cleaning, food safety rules.
+    risks: [microbiome, immune]
+  - code: vision_checks
+    title: Vision checks
+    how: Weekly vision card test and periodic eye exam to catch SANS early.
+    risks: [sans]
+  - code: balance_training
+    title: Balance and readaptation
+    how: Balance drills after gravity changes; move slowly for the first days after landing.
+    risks: [sensorimotor, dynamic_loads, cardiovascular]
+
+# --- Daily schedule (FR-40): what to measure and when -------------------------------
+# Times are mission UTC. kind: indicators (done when every listed indicator has a
+# reading in the window) or manual (the crew member marks it done).
+schedule:
+  - code: morning_vitals
+    title: Morning vitals
+    every: daily
+    from_hour: 5
+    due_hour: 9
+    indicators: [heart_rate, spo2, bp_systolic, bp_diastolic, body_temp, glucose]
+  - code: morning_checkin
+    title: Morning check-in
+    every: daily
+    from_hour: 5
+    due_hour: 10
+    indicators: [sleep_hours, mood, stress, headache, exercise_minutes, water_intake]
+  - code: exercise
+    title: Exercise session (2 h)
+    every: daily
+    from_hour: 0
+    due_hour: 20
+    manual: true
+  - code: evening_bp
+    title: Evening blood pressure
+    every: daily
+    from_hour: 18
+    due_hour: 22
+    indicators: [bp_systolic, bp_diastolic]
+  - code: dosimeter
+    title: Read the personal dosimeter
+    every: daily
+    from_hour: 18
+    due_hour: 23
+    indicators: [radiation_dose]
+  - code: weekly_mass
+    title: Weekly body mass
+    every: weekly
+    from_hour: 5
+    due_hour: 10
+    indicators: [body_mass_change]
+  - code: weekly_vision
+    title: Weekly vision check
+    every: weekly
+    from_hour: 5
+    due_hour: 12
+    indicators: [vision_change]
+
 # --- Vehicle environment (REQUIREMENTS §5.9) ----------------------------------------
 # Life-support parameters per module. Bands are ILLUSTRATIVE, based on
 # NASA-STD-3001 Vol. 2 §6.2 (atmosphere) and ISS operating practice; flight
@@ -737,3 +1003,8 @@ rules:
     action: Talk to the commander about workload, keep a regular schedule and schedule a private conference with the psychologist.
     recheck_minutes: 0
     escalate_reason: Low mood or high stress for two days in a row.
+  - id: trend
+    title: Trending toward the limit
+    action: Nothing is out of range yet. Review what changed — diet, exercise, sleep or workload — and keep measuring on schedule; raise it at the next medical conference.
+    recheck_minutes: 0
+    escalate_reason: A steady trend will leave the nominal range soon.

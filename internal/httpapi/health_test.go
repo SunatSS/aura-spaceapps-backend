@@ -141,3 +141,21 @@ func TestStaticFrontend(t *testing.T) {
 	// API paths never fall through to index.html.
 	e.do(http.MethodGet, "/api/v1/unknown", nil, http.StatusNotFound, nil)
 }
+
+func TestAPIDocs(t *testing.T) {
+	e := newTestEnv(t, false, "")
+	for path, want := range map[string]string{
+		"/api/v1/openapi.yaml":           "openapi: 3.1.0",
+		"/api/docs/":                     "SwaggerUIBundle",
+		"/api/docs/swagger-ui.css":       ".swagger-ui",
+		"/api/docs/swagger-ui-bundle.js": "SwaggerUIBundle",
+	} {
+		rr := e.raw(http.MethodGet, path, nil)
+		if rr.Code != http.StatusOK || !bytes.Contains(rr.Body.Bytes(), []byte(want)) {
+			t.Errorf("GET %s: %d", path, rr.Code)
+		}
+	}
+	if rr := e.raw(http.MethodGet, "/api/docs", nil); rr.Code != http.StatusMovedPermanently {
+		t.Errorf("GET /api/docs: %d, want redirect", rr.Code)
+	}
+}
