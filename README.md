@@ -32,5 +32,3 @@ npm run dev        # http://localhost:5173
 | `npm test` | Unit tests (Vitest) |
 | `npm run lint` | oxlint |
 | `npm run gen:api` | Regenerate API types from `../aura-spaceapps-backend/api/openapi.yaml` |
-
-Product requirements and the work plan live in the workspace root: `../docs/`.

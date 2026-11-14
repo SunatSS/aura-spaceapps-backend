@@ -1,6 +1,6 @@
 # aura-spaceapps-frontend
 
-Веб-интерфейс AURA. Общий контекст продукта — `../CLAUDE.md`, требования — `../docs/REQUIREMENTS.md`, план — `../docs/PLAN.md`.
+Веб-интерфейс AURA (Astronaut Universal Readiness Assessment) — инструмент самооценки здоровья астронавта, NASA Space Apps 2026. API — репозиторий `aura-spaceapps-backend`, клонируется рядом.
 
 ## Стек
 
