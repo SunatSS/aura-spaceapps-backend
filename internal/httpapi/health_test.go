@@ -1,40 +1,104 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"aura/internal/catalog"
+	"aura/internal/seed"
 	"aura/internal/storage"
 )
 
-func newTestRouter(t *testing.T) http.Handler {
+var testNow = time.Date(2026, 11, 15, 9, 0, 0, 0, time.UTC)
+
+type testEnv struct {
+	t      *testing.T
+	router http.Handler
+}
+
+// newTestEnv returns a router over a fresh DB; seeded with the demo mission if seeded is true.
+func newTestEnv(t *testing.T, seeded bool, staticDir string) testEnv {
 	t.Helper()
-	db, err := storage.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"))
+	ctx := context.Background()
+	db, err := storage.Open(ctx, filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
-	return NewRouter(Deps{DB: db, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))})
+	cat, err := catalog.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if seeded {
+		if err := seed.Run(ctx, db, cat, testNow); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r := NewRouter(Deps{
+		DB: db, Catalog: cat, StaticDir: staticDir,
+		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Now:    func() time.Time { return testNow },
+	})
+	return testEnv{t: t, router: r}
+}
+
+// do performs a request and decodes the JSON body into out (if non-nil).
+func (e testEnv) do(method, path string, body any, wantStatus int, out any) {
+	e.t.Helper()
+	var rd io.Reader
+	if body != nil {
+		b, _ := json.Marshal(body)
+		rd = bytes.NewReader(b)
+	}
+	rr := httptest.NewRecorder()
+	e.router.ServeHTTP(rr, httptest.NewRequest(method, path, rd))
+	if rr.Code != wantStatus {
+		e.t.Fatalf("%s %s: status %d, want %d; body: %s", method, path, rr.Code, wantStatus, rr.Body.String())
+	}
+	if out != nil {
+		if err := json.Unmarshal(rr.Body.Bytes(), out); err != nil {
+			e.t.Fatalf("%s %s: decode: %v; body: %s", method, path, err, rr.Body.String())
+		}
+	}
 }
 
 func TestHealth(t *testing.T) {
-	rr := httptest.NewRecorder()
-	newTestRouter(t).ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/v1/health", nil))
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rr.Code)
-	}
 	var got healthResponse
-	if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
+	newTestEnv(t, false, "").do(http.MethodGet, "/api/v1/health", nil, http.StatusOK, &got)
 	if got.Status != "ok" || got.DB != "ok" {
 		t.Fatalf("body = %+v, want ok/ok", got)
 	}
+}
+
+func TestEmptyDatabase(t *testing.T) {
+	e := newTestEnv(t, false, "")
+	e.do(http.MethodGet, "/api/v1/missions/current", nil, http.StatusNotFound, nil)
+	e.do(http.MethodGet, "/api/v1/nope", nil, http.StatusNotFound, nil)
+}
+
+func TestStaticFrontend(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "index.html"), []byte("<html>AURA</html>"), 0o644)
+	os.MkdirAll(filepath.Join(dir, "assets"), 0o755)
+	os.WriteFile(filepath.Join(dir, "assets", "app.js"), []byte("console.log(1)"), 0o644)
+	e := newTestEnv(t, false, dir)
+
+	for path, want := range map[string]string{"/": "AURA", "/body": "AURA", "/assets/app.js": "console.log"} {
+		rr := httptest.NewRecorder()
+		e.router.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, path, nil))
+		if rr.Code != http.StatusOK || !bytes.Contains(rr.Body.Bytes(), []byte(want)) {
+			t.Errorf("GET %s: %d %q", path, rr.Code, rr.Body.String())
+		}
+	}
+	// API paths never fall through to index.html.
+	e.do(http.MethodGet, "/api/v1/unknown", nil, http.StatusNotFound, nil)
 }

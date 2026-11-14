@@ -1,0 +1,522 @@
+# AURA indicator catalog — the single source of all health content.
+#
+# Edit texts freely (names, about, how_to_measure, why_in_space, guidance).
+# Keep codes, units and thresholds consistent; `go test ./...` validates the file.
+#
+# Thresholds: a value inside `nominal` is nominal; otherwise inside `caution`
+# is caution; otherwise critical. Bounds are inclusive; null = open bound.
+# Ranges are ILLUSTRATIVE general clinical references for healthy adults at
+# rest — the challenge resources (NASA HRP, CSA) give no numeric limits.
+# See docs/RESOURCES.md in the team workspace.
+
+disclaimer: >-
+  AURA is a hackathon prototype, not a medical device. Ranges and
+  recommendations are illustrative and must not be used for medical decisions.
+
+thresholds_note: >-
+  Illustrative ranges based on general clinical references for healthy adults
+  at rest. NASA Human Research Program resources define which risks matter,
+  not numeric limits.
+
+# --- NASA HRP: 5 hazards of human spaceflight ---------------------------------
+# Source: https://www.nasa.gov/hrp/hazards/
+hazards:
+  - code: radiation
+    name: Space radiation
+    description: Invisible and considered one of the most hazardous aspects of spaceflight.
+    url: https://www.nasa.gov/hrp/hazards/
+  - code: isolation
+    name: Isolation and confinement
+    description: Behavioral responses of small groups isolated in a small space for months or years.
+    url: https://www.nasa.gov/hrp/hazards/
+  - code: distance
+    name: Distance from Earth
+    description: Instructions, supplies and medical care get harder to receive the farther the crew travels.
+    url: https://www.nasa.gov/hrp/hazards/
+  - code: gravity
+    name: Gravity fields
+    description: Muscles, bones, inner ear and organs adjust to weightlessness, Moon or Mars gravity, and Earth again.
+    url: https://www.nasa.gov/hrp/hazards/
+  - code: hostile_environment
+    name: Hostile and closed environments
+    description: Temperature, pressure, lighting, noise and microbes inside the vehicle shape crew health.
+    url: https://www.nasa.gov/hrp/hazards/
+
+# --- NASA HRP: specific risks -------------------------------------------------
+# Source: https://www.nasa.gov/hrp/risks/
+risks:
+  - code: immune
+    name: Altered immune system responses
+    description: Spaceflight stress can reactivate dormant viruses and change immunity.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [radiation, isolation, hostile_environment]
+  - code: sensorimotor
+    name: Altered sensorimotor and vestibular function
+    description: Motion sickness, dizziness and poor coordination during gravity transitions.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [gravity]
+  - code: cardiovascular
+    name: Cardiovascular adaptations
+    description: Weightlessness alters circulation and heart function, raising the risk of cardiovascular events.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [gravity, radiation]
+  - code: decompression
+    name: Decompression sickness
+    description: Moving from the cabin to a lower-pressure suit can make dissolved nitrogen bubble in tissues.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [hostile_environment]
+  - code: microbiome
+    name: Host-microorganism interactions
+    description: Skin and gut microbiomes change in space and may make crew members sick.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [hostile_environment]
+  - code: hypoxia
+    name: Hypoxia
+    description: Protocols that prevent "the bends" on spacewalks raise the risk of mild oxygen deficiency.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [hostile_environment]
+  - code: nutrition
+    name: Inadequate food and nutrition
+    description: A balanced diet is essential for crew health and performance on long missions.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [distance, hostile_environment]
+  - code: eva
+    name: Injury and compromised performance during spacewalks
+    description: Suit work brings fatigue, injury risk, low oxygen and high carbon dioxide.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [hostile_environment, gravity]
+  - code: fitness
+    name: Reduced cardiorespiratory and musculoskeletal fitness
+    description: Exercise counters loss of bone, muscle strength and heart performance.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [gravity]
+  - code: sans
+    name: Spaceflight Associated Neuro-ocular Syndrome (SANS)
+    description: The structure of the eyes and brain can change during spaceflight.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [gravity]
+  - code: bone
+    name: Spaceflight-induced bone changes
+    description: Without gravity bones break down and become brittle.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [gravity]
+  - code: behavioral
+    name: Behavioral changes and psychiatric disorders
+    description: Isolation, radiation and distance from Earth take a toll on mental health.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [isolation, distance, radiation]
+  - code: teamwork
+    name: Inadequate teamwork
+    description: Crews in prolonged isolation must work well together and recover quickly from setbacks.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [isolation, distance]
+  - code: sleep
+    name: Inadequate sleep and irregular schedules
+    description: Chronic sleep loss, constant work demands and disrupted body clocks.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [isolation, hostile_environment]
+  - code: dynamic_loads
+    name: Injury from dynamic loads
+    description: Crews risk injury during landing.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [gravity]
+  - code: radiation_cancer
+    name: Radiation-induced cancers
+    description: Space radiation exposure may raise long-term cancer risk.
+    url: https://www.nasa.gov/hrp/risks/
+    hazards: [radiation]
+
+# --- Mission environments -----------------------------------------------------
+environments:
+  - code: iss
+    name: Low Earth orbit station
+    description: Weightlessness; ground support is seconds away.
+    gravity_g: 0
+    comm_delay_min_s: 0
+    comm_delay_max_s: 2
+  - code: lunar_surface
+    name: Lunar surface base
+    description: One-sixth gravity, lunar dust, about 1.3 s signal delay.
+    gravity_g: 0.17
+    comm_delay_min_s: 1
+    comm_delay_max_s: 2
+  - code: mars_transit
+    name: Earth–Mars transit
+    description: Weightlessness far from Earth; the crew must be self-sufficient.
+    gravity_g: 0
+    comm_delay_min_s: 180
+    comm_delay_max_s: 1320
+  - code: mars_surface
+    name: Mars surface base
+    description: Three-eighths of Earth gravity; replies from Earth take minutes.
+    gravity_g: 0.38
+    comm_delay_min_s: 180
+    comm_delay_max_s: 1320
+
+# --- Body systems (body map zones) --------------------------------------------
+systems:
+  - code: cardiovascular
+    name: Heart & circulation
+    description: Weightlessness shifts fluids toward the head and deconditions the heart and vessels.
+    weight: 1
+    risks: [cardiovascular, fitness]
+  - code: respiratory
+    name: Lungs & oxygen
+    description: Blood oxygen reflects cabin air quality and suit conditions during spacewalks.
+    weight: 1
+    risks: [hypoxia, decompression, eva]
+  - code: immune
+    name: Immunity & temperature
+    description: Spaceflight stress can weaken immunity; body temperature is an early sign of infection.
+    weight: 1
+    risks: [immune, microbiome]
+  - code: metabolic
+    name: Metabolism & nutrition
+    description: Diet, energy and blood sugar on missions where resupply is impossible.
+    weight: 1
+    risks: [nutrition]
+  - code: behavioral
+    name: Mind & sleep
+    description: Sleep, mood and stress under isolation, confinement and constant workload.
+    weight: 1
+    risks: [behavioral, sleep, teamwork]
+  - code: musculoskeletal
+    name: Bones & muscles
+    description: Bone and muscle loss in low gravity, countered by daily exercise.
+    weight: 1
+    risks: [bone, fitness, dynamic_loads]
+  - code: eyes
+    name: Eyes & brain
+    description: Fluid shifts can change the eyes and brain (SANS).
+    weight: 1
+    risks: [sans, sensorimotor]
+
+# --- Indicators -----------------------------------------------------------------
+indicators:
+  - code: heart_rate
+    name: Resting heart rate
+    unit: bpm
+    system: cardiovascular
+    input: number
+    min: 20
+    max: 250
+    step: 1
+    freshness_hours: 24
+    hazards: [gravity, hostile_environment]
+    risks: [cardiovascular, fitness, eva]
+    # Source: general clinical reference, adult resting HR 60–100 bpm (AHA);
+    # lower bound relaxed to 50 for trained astronauts.
+    thresholds:
+      nominal: {min: 50, max: 100}
+      caution: {min: 40, max: 120}
+    about: Number of heartbeats per minute at rest.
+    how_to_measure:
+      - Sit still for 5 minutes before measuring.
+      - Put on the finger pulse sensor or wrist monitor.
+      - Record the value after the reading is stable for 30 seconds.
+    why_in_space: Fluid shifts and heart deconditioning change heart rate; a high resting rate can signal stress, fever, dehydration or overexertion after a spacewalk.
+    guidance:
+      caution:
+        title: Heart rate outside the normal range
+        action: Rest seated for 10 minutes, drink water, avoid exercise, then re-measure.
+        recheck_minutes: 15
+        escalate: false
+      critical:
+        title: Heart rate is critically abnormal
+        action: Stop all activity, lie down, tell a crewmate and re-measure in 5 minutes. If still critical, follow the cardiac protocol.
+        recheck_minutes: 5
+        escalate: true
+
+  - code: bp_systolic
+    name: Blood pressure (systolic)
+    unit: mmHg
+    system: cardiovascular
+    input: number
+    min: 50
+    max: 260
+    step: 1
+    freshness_hours: 24
+    hazards: [gravity]
+    risks: [cardiovascular]
+    # Source: general clinical reference (AHA categories: normal <120,
+    # stage 1 130–139, stage 2 >=140, crisis >180), simplified to three bands.
+    thresholds:
+      nominal: {min: 90, max: 129}
+      caution: {min: 80, max: 159}
+    about: The pressure in your arteries when the heart beats (upper number).
+    how_to_measure:
+      - Sit with your back supported and feet secured for 5 minutes.
+      - Put the cuff on the bare upper arm at heart level.
+      - Do not talk or move during the reading; record both numbers.
+    why_in_space: Weightlessness pushes fluids toward the head and changes how the heart and vessels work, which raises cardiovascular risk.
+    guidance:
+      caution:
+        title: Blood pressure is elevated
+        action: Rest for 15 minutes, reduce salt and caffeine today, re-measure in the evening.
+        recheck_minutes: 240
+        escalate: false
+      critical:
+        title: Blood pressure is critically abnormal
+        action: Stop physical work, sit down, breathe slowly and re-measure in 5 minutes.
+        recheck_minutes: 5
+        escalate: false
+
+  - code: bp_diastolic
+    name: Blood pressure (diastolic)
+    unit: mmHg
+    system: cardiovascular
+    input: number
+    min: 30
+    max: 160
+    step: 1
+    freshness_hours: 24
+    hazards: [gravity]
+    risks: [cardiovascular]
+    # Source: general clinical reference (AHA: normal <80, stage 1 80–89,
+    # stage 2 >=90), simplified to three bands.
+    thresholds:
+      nominal: {min: 60, max: 84}
+      caution: {min: 50, max: 99}
+    about: The pressure in your arteries between heartbeats (lower number).
+    how_to_measure:
+      - Measured together with systolic pressure — use the same cuff reading.
+    why_in_space: Diastolic pressure reacts to fluid shifts and stress in the same way as systolic pressure.
+    guidance:
+      caution:
+        title: Diastolic pressure is elevated
+        action: Rest for 15 minutes, reduce salt and caffeine today, re-measure in the evening.
+        recheck_minutes: 240
+        escalate: false
+      critical:
+        title: Diastolic pressure is critically abnormal
+        action: Stop physical work, sit down, breathe slowly and re-measure in 5 minutes.
+        recheck_minutes: 5
+        escalate: false
+
+  - code: spo2
+    name: Blood oxygen (SpO₂)
+    unit: "%"
+    system: respiratory
+    input: number
+    min: 50
+    max: 100
+    step: 1
+    freshness_hours: 24
+    hazards: [hostile_environment]
+    risks: [hypoxia, decompression, eva]
+    # Source: general clinical reference, normal SpO2 95–100 %.
+    thresholds:
+      nominal: {min: 95, max: null}
+      caution: {min: 92, max: null}
+    about: How much of your blood's hemoglobin carries oxygen.
+    how_to_measure:
+      - Warm your hands; remove anything from the fingertip.
+      - Clip the pulse oximeter on and keep the hand still at heart level.
+      - Record the value after 30 seconds of a stable reading.
+    why_in_space: Low oxygen can come from cabin air problems or from suit conditions during a spacewalk (hypoxia, decompression).
+    guidance:
+      caution:
+        title: Blood oxygen is below normal
+        action: Check the sensor placement, sit upright, breathe deeply for 2 minutes and re-measure. Check cabin CO₂ and O₂ readings.
+        recheck_minutes: 10
+        escalate: false
+      critical:
+        title: Blood oxygen is critically low
+        action: Stop activity, switch to supplemental oxygen if available, check cabin atmosphere and re-measure immediately.
+        recheck_minutes: 2
+        escalate: true
+
+  - code: body_temp
+    name: Body temperature
+    unit: "°C"
+    system: immune
+    input: number
+    min: 30
+    max: 43
+    step: 0.1
+    freshness_hours: 24
+    hazards: [hostile_environment, isolation]
+    risks: [immune, microbiome]
+    # Source: general clinical reference, normal 36.1–37.5 °C; fever >=38.
+    thresholds:
+      nominal: {min: 36.1, max: 37.5}
+      caution: {min: 35.5, max: 38.4}
+    about: Core body temperature measured with the ear or forehead thermometer.
+    how_to_measure:
+      - Wait 15 minutes after exercise, food or drinks.
+      - Measure with the ear thermometer, same ear each time.
+      - Record the value; if it seems off, measure again.
+    why_in_space: Spaceflight stress can reactivate dormant viruses; fever is an early sign of infection in a closed environment.
+    guidance:
+      caution:
+        title: Body temperature is outside the normal range
+        action: Rest, drink fluids, watch for symptoms (rash, sore throat, chills) and re-measure in 2 hours.
+        recheck_minutes: 120
+        escalate: false
+      critical:
+        title: Body temperature is critically abnormal
+        action: Stop work, isolate from the crew if infection is possible, start the fever protocol and re-measure in 30 minutes.
+        recheck_minutes: 30
+        escalate: true
+
+  - code: glucose
+    name: Blood glucose
+    unit: mg/dL
+    system: metabolic
+    input: number
+    min: 20
+    max: 600
+    step: 1
+    freshness_hours: 48
+    hazards: [distance, hostile_environment]
+    risks: [nutrition]
+    # Source: general clinical reference; ADA hypoglycemia level 1 <70,
+    # level 2 <54 mg/dL; 140/180 mg/dL post-meal upper references.
+    thresholds:
+      nominal: {min: 70, max: 140}
+      caution: {min: 54, max: 180}
+    about: Sugar level in your blood from a finger-prick glucometer.
+    how_to_measure:
+      - Wash and dry your hands.
+      - Prick the side of a fingertip and touch the strip to the drop.
+      - Note whether you ate in the last 2 hours.
+    why_in_space: Nutrition is limited on long missions; blood sugar reflects whether energy intake matches the workload.
+    guidance:
+      caution:
+        title: Blood glucose is outside the normal range
+        action: If low — eat a snack with fast carbohydrates; if high — skip sweets and drink water. Re-measure in 1 hour.
+        recheck_minutes: 60
+        escalate: false
+      critical:
+        title: Blood glucose is critically abnormal
+        action: If low — take 15 g of fast carbohydrates now and re-measure in 15 minutes. If high — drink water and re-measure.
+        recheck_minutes: 15
+        escalate: true
+
+  - code: sleep_hours
+    name: Sleep last night
+    unit: h
+    system: behavioral
+    input: number
+    min: 0
+    max: 24
+    step: 0.25
+    freshness_hours: 24
+    hazards: [isolation, hostile_environment]
+    risks: [sleep, behavioral]
+    # Source: adult sleep recommendation 7–9 h (AASM / National Sleep Foundation).
+    thresholds:
+      nominal: {min: 7, max: 9}
+      caution: {min: 6, max: null}
+    about: Hours you actually slept during the last sleep period.
+    how_to_measure:
+      - Right after waking, estimate the hours you slept (or take the value from the wrist sensor).
+    why_in_space: Chronic sleep loss and disrupted body clocks are a known HRP risk; fatigue causes errors in critical operations.
+    guidance:
+      caution:
+        title: You slept less than recommended
+        action: Plan a 20-minute nap, avoid caffeine after midday, dim lights an hour before sleep.
+        recheck_minutes: 0
+        escalate: false
+      critical:
+        title: Severe lack of sleep
+        action: Avoid critical tasks today if possible, tell the commander, take a nap and go to bed on time.
+        recheck_minutes: 0
+        escalate: false
+
+  - code: mood
+    name: Mood
+    unit: score
+    system: behavioral
+    input: scale
+    min: 1
+    max: 5
+    step: 1
+    freshness_hours: 24
+    hazards: [isolation, distance]
+    risks: [behavioral, teamwork]
+    scale_labels:
+      - {value: 1, label: Very low}
+      - {value: 2, label: Low}
+      - {value: 3, label: Neutral}
+      - {value: 4, label: Good}
+      - {value: 5, label: Great}
+    # Self-report scale; bands chosen for the prototype.
+    thresholds:
+      nominal: {min: 4, max: 5}
+      caution: {min: 3, max: 5}
+    about: How you feel today, from 1 (very low) to 5 (great).
+    how_to_measure:
+      - Answer honestly in the morning check-in; there are no wrong answers.
+    why_in_space: Isolation and distance from family affect mental health; tracking mood helps catch problems early.
+    guidance:
+      caution:
+        title: Your mood is lower than usual
+        action: Take a short break, talk to a crewmate, schedule a call or message home.
+        recheck_minutes: 0
+        escalate: false
+      critical:
+        title: Your mood is very low
+        action: Tell a crewmate you trust and request a private conference with the psychologist.
+        recheck_minutes: 0
+        escalate: false
+
+  - code: stress
+    name: Stress
+    unit: score
+    system: behavioral
+    input: scale
+    min: 1
+    max: 5
+    step: 1
+    freshness_hours: 24
+    hazards: [isolation, distance]
+    risks: [behavioral, sleep]
+    scale_labels:
+      - {value: 1, label: Calm}
+      - {value: 2, label: Mild}
+      - {value: 3, label: Moderate}
+      - {value: 4, label: High}
+      - {value: 5, label: Overwhelming}
+    # Self-report scale; bands chosen for the prototype.
+    thresholds:
+      nominal: {min: 1, max: 2}
+      caution: {min: 1, max: 3}
+    about: How stressed you feel today, from 1 (calm) to 5 (overwhelming).
+    how_to_measure:
+      - Answer in the morning check-in, thinking about the last 24 hours.
+    why_in_space: Constant workload in a confined space builds stress, which harms sleep, immunity and teamwork.
+    guidance:
+      caution:
+        title: Stress is building up
+        action: Do a 5-minute breathing exercise and review today's tasks with the commander.
+        recheck_minutes: 0
+        escalate: false
+      critical:
+        title: Stress is very high
+        action: Ask the commander to reprioritize your tasks and book a session with the psychologist.
+        recheck_minutes: 0
+        escalate: false
+
+# --- Rule texts used by internal/guidance ------------------------------------------
+rules:
+  - id: repeated_critical
+    title: Repeated critical reading
+    action: Two critical readings in a row — report to the flight surgeon and follow the protocol.
+    recheck_minutes: 5
+    escalate_reason: Two consecutive critical readings of the same indicator.
+  - id: sleep_debt
+    title: Accumulating sleep debt
+    action: Shift non-critical tasks, protect the next sleep period, darken the crew quarters and avoid caffeine after midday.
+    recheck_minutes: 0
+    escalate_reason: Three or more nights in a row with less than 6 hours of sleep.
+  - id: post_eva_hypoxia
+    title: Low blood oxygen after a spacewalk
+    action: Rest on cabin air, check for decompression symptoms (joint pain, tingling, headache) and re-measure SpO₂ every 15 minutes.
+    recheck_minutes: 15
+    escalate_reason: Blood oxygen stayed below normal after a spacewalk (hypoxia / decompression risk).
+  - id: low_mood_streak
+    title: Low mood or high stress for several days
+    action: Talk to the commander about workload, keep a regular schedule and schedule a private conference with the psychologist.
+    recheck_minutes: 0
+    escalate_reason: Low mood or high stress for two days in a row.

@@ -1,0 +1,9 @@
+# Render Blueprint: one free web service that serves the API and the web UI.
+# Render → New → Blueprint → pick this repository.
+services:
+  - type: web
+    name: aura-spaceapps
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/v1/health
+    autoDeploy: true

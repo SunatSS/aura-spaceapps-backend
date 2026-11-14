@@ -13,6 +13,30 @@ next to this repository (same parent folder).
 go run ./cmd/aura    # http://localhost:8080/api/v1/health
 ```
 
+On first start with an empty database the server seeds a demo mission
+(Mars Expedition MX-1, mission day 210, crew of four + flight surgeon, 30 days of readings).
+
+Serve the web UI from the same binary:
+
+```bash
+AURA_STATIC_DIR=../aura-spaceapps-frontend/dist go run ./cmd/aura
+```
+
+## API
+
+Contract: [`api/openapi.yaml`](api/openapi.yaml). Main endpoints under `/api/v1`:
+`/indicators`, `/missions/current`, `/astronauts`, `/astronauts/{id}/readiness`,
+`/astronauts/{id}/guidance`, `/astronauts/{id}/measurements` (GET/POST), `/astronauts/{id}/activities`.
+
+Health content (indicators, thresholds, texts, NASA HRP risks) lives in
+[`internal/catalog/catalog.yaml`](internal/catalog/catalog.yaml).
+
+## Deploy (Render, free)
+
+Render → New → Blueprint → this repository (`render.yaml`). The Docker image builds the
+frontend from `aura-spaceapps-frontend` and serves API + UI on one URL. The free plan has no
+persistent disk: the demo data is re-seeded on every start.
+
 ## Commands
 
 | Task | Command |

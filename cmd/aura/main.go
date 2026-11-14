@@ -11,8 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"aura/internal/catalog"
 	"aura/internal/config"
 	"aura/internal/httpapi"
+	"aura/internal/seed"
 	"aura/internal/storage"
 )
 
@@ -35,15 +37,33 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	cat, err := catalog.Default()
+	if err != nil {
+		return err
+	}
+
 	db, err := storage.Open(ctx, cfg.DBPath)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
+	if cfg.Seed {
+		empty, err := db.Q().IsEmpty(ctx)
+		if err != nil {
+			return err
+		}
+		if empty {
+			if err := seed.Run(ctx, db, cat, time.Now()); err != nil {
+				return err
+			}
+			logger.Info("database was empty: demo mission seeded")
+		}
+	}
+
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           httpapi.NewRouter(httpapi.Deps{DB: db, Logger: logger}),
+		Handler:           httpapi.NewRouter(httpapi.Deps{DB: db, Catalog: cat, Logger: logger, StaticDir: cfg.StaticDir}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

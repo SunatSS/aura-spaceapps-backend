@@ -1,13 +1,16 @@
 openapi: 3.1.0
 info:
   title: AURA API
-  version: 0.1.0
+  version: 0.2.0
   description: |
     Astronaut Universal Readiness Assessment — health monitoring API.
     Source of truth for the backend/frontend contract. The frontend generates
     TypeScript types from this file (`npm run gen:api` in aura-spaceapps-frontend).
+
+    Timestamps are RFC 3339 in UTC. Statuses everywhere: unknown | nominal | caution | critical.
 servers:
   - url: /api/v1
+
 paths:
   /health:
     get:
@@ -18,30 +21,487 @@ paths:
           description: Service is healthy
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Health"
+              schema: { $ref: "#/components/schemas/Health" }
         "503":
           description: Service is degraded
           content:
             application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+
+  /indicators:
+    get:
+      operationId: getCatalog
+      summary: Health content catalog — indicators, body systems, NASA HRP hazards and risks, environments
+      responses:
+        "200":
+          description: The catalog
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Catalog" }
+
+  /missions/current:
+    get:
+      operationId: getCurrentMission
+      summary: Current mission with phases, current phase, environment and mission day
+      responses:
+        "200":
+          description: The mission
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurrentMission" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /astronauts:
+    get:
+      operationId: listAstronauts
+      summary: Mission members, including the ground flight surgeon
+      responses:
+        "200":
+          description: Crew list
+          content:
+            application/json:
               schema:
-                $ref: "#/components/schemas/Health"
+                type: object
+                required: [astronauts]
+                properties:
+                  astronauts:
+                    type: array
+                    items: { $ref: "#/components/schemas/Astronaut" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /astronauts/{id}:
+    parameters:
+      - $ref: "#/components/parameters/AstronautId"
+    get:
+      operationId: getAstronaut
+      summary: One mission member
+      responses:
+        "200":
+          description: The astronaut
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Astronaut" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /astronauts/{id}/readiness:
+    parameters:
+      - $ref: "#/components/parameters/AstronautId"
+    get:
+      operationId: getReadiness
+      summary: Readiness Score, per-system and per-indicator statuses
+      responses:
+        "200":
+          description: The assessment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /astronauts/{id}/guidance:
+    parameters:
+      - $ref: "#/components/parameters/AstronautId"
+    get:
+      operationId: getGuidance
+      summary: Active recommendations and escalations to the flight surgeon
+      responses:
+        "200":
+          description: Recommendations, most severe first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Guidance" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /astronauts/{id}/measurements:
+    parameters:
+      - $ref: "#/components/parameters/AstronautId"
+    get:
+      operationId: listMeasurements
+      summary: Reading history in chronological order (for charts)
+      parameters:
+        - name: indicator
+          in: query
+          schema: { type: string }
+          description: Indicator code, e.g. bp_systolic
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+      responses:
+        "200":
+          description: Readings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [measurements]
+                properties:
+                  measurements:
+                    type: array
+                    items: { $ref: "#/components/schemas/MeasurementView" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createMeasurements
+      summary: Record one or more readings (manual entry or check-in)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateMeasurementsRequest" }
+      responses:
+        "201":
+          description: Created readings with their statuses
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [measurements]
+                properties:
+                  measurements:
+                    type: array
+                    items: { $ref: "#/components/schemas/MeasurementView" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /astronauts/{id}/activities:
+    parameters:
+      - $ref: "#/components/parameters/AstronautId"
+    get:
+      operationId: listActivities
+      summary: Activities such as landing and spacewalks (EVA)
+      parameters:
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+      responses:
+        "200":
+          description: Activities in chronological order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [activities]
+                properties:
+                  activities:
+                    type: array
+                    items: { $ref: "#/components/schemas/Activity" }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
 components:
+  parameters:
+    AstronautId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    From:
+      name: from
+      in: query
+      schema: { type: string, format: date-time }
+    To:
+      name: to
+      in: query
+      schema: { type: string, format: date-time }
+
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
   schemas:
-    Health:
-      type: object
-      required: [status, db]
-      properties:
-        status:
-          type: string
-          enum: [ok, degraded]
-        db:
-          type: string
-          enum: [ok, error]
     Error:
       type: object
       required: [error]
       properties:
-        error:
-          type: string
-          description: Human-readable error message
+        error: { type: string, description: Human-readable error message }
+
+    Health:
+      type: object
+      required: [status, db]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        db: { type: string, enum: [ok, error] }
+
+    Status:
+      type: string
+      enum: [unknown, nominal, caution, critical]
+
+    EnvironmentCode:
+      type: string
+      enum: [iss, lunar_surface, mars_transit, mars_surface]
+
+    Role:
+      type: string
+      enum: [crew, commander, deputy_commander, flight_surgeon]
+
+    # --- catalog ---------------------------------------------------------------
+    Catalog:
+      type: object
+      required: [disclaimer, thresholdsNote, hazards, risks, environments, systems, indicators]
+      properties:
+        disclaimer: { type: string }
+        thresholdsNote: { type: string, description: Ranges are illustrative — show next to thresholds }
+        hazards: { type: array, items: { $ref: "#/components/schemas/Hazard" } }
+        risks: { type: array, items: { $ref: "#/components/schemas/Risk" } }
+        environments: { type: array, items: { $ref: "#/components/schemas/Environment" } }
+        systems: { type: array, items: { $ref: "#/components/schemas/BodySystem" } }
+        indicators: { type: array, items: { $ref: "#/components/schemas/Indicator" } }
+
+    Hazard:
+      type: object
+      required: [code, name, description, url]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        description: { type: string }
+        url: { type: string }
+
+    Risk:
+      type: object
+      required: [code, name, description, url, hazards]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        description: { type: string }
+        url: { type: string }
+        hazards: { type: array, items: { type: string } }
+
+    Environment:
+      type: object
+      required: [code, name, description, gravityG, commDelayMinS, commDelayMaxS]
+      properties:
+        code: { $ref: "#/components/schemas/EnvironmentCode" }
+        name: { type: string }
+        description: { type: string }
+        gravityG: { type: number }
+        commDelayMinS: { type: integer, description: One-way signal delay to Earth, seconds }
+        commDelayMaxS: { type: integer }
+
+    BodySystem:
+      type: object
+      required: [code, name, description, weight, risks]
+      properties:
+        code: { type: string, description: "Body map zone id: cardiovascular, respiratory, immune, metabolic, behavioral, musculoskeletal, eyes" }
+        name: { type: string }
+        description: { type: string }
+        weight: { type: number }
+        risks: { type: array, items: { type: string } }
+
+    Range:
+      type: object
+      required: [min, max]
+      properties:
+        min: { type: [number, "null"] }
+        max: { type: [number, "null"] }
+
+    Thresholds:
+      type: object
+      required: [nominal, caution]
+      description: Inside nominal → nominal; else inside caution → caution; else critical. Inclusive bounds.
+      properties:
+        nominal: { $ref: "#/components/schemas/Range" }
+        caution: { $ref: "#/components/schemas/Range" }
+
+    Advice:
+      type: object
+      required: [title, action, recheckMinutes, escalate]
+      properties:
+        title: { type: string }
+        action: { type: string }
+        recheckMinutes: { type: integer }
+        escalate: { type: boolean }
+
+    Indicator:
+      type: object
+      required: [code, name, unit, system, input, scaleLabels, min, max, step, freshnessHours, hazards, risks, thresholds, about, howToMeasure, whyInSpace, guidance]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        unit: { type: string }
+        system: { type: string }
+        input: { type: string, enum: [number, scale] }
+        scaleLabels:
+          type: [array, "null"]
+          items:
+            type: object
+            required: [value, label]
+            properties:
+              value: { type: integer }
+              label: { type: string }
+        min: { type: number, description: Lowest accepted input value }
+        max: { type: number, description: Highest accepted input value }
+        step: { type: number }
+        freshnessHours: { type: integer, description: A reading older than this counts as unknown }
+        hazards: { type: array, items: { type: string } }
+        risks: { type: array, items: { type: string } }
+        thresholds: { $ref: "#/components/schemas/Thresholds" }
+        environmentThresholds:
+          type: object
+          additionalProperties: { $ref: "#/components/schemas/Thresholds" }
+        about: { type: string }
+        howToMeasure: { type: array, items: { type: string } }
+        whyInSpace: { type: string }
+        guidance:
+          type: object
+          required: [caution, critical]
+          properties:
+            caution: { $ref: "#/components/schemas/Advice" }
+            critical: { $ref: "#/components/schemas/Advice" }
+
+    # --- mission and crew --------------------------------------------------------
+    Phase:
+      type: object
+      required: [id, name, environment, startsAt, endsAt]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        environment: { $ref: "#/components/schemas/EnvironmentCode" }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: [string, "null"], format: date-time }
+
+    CurrentMission:
+      type: object
+      required: [id, name, startedAt, phases, missionDay, currentPhase, environment, now]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        startedAt: { type: string, format: date-time }
+        phases: { type: array, items: { $ref: "#/components/schemas/Phase" } }
+        missionDay: { type: integer, description: 1-based "Mission Day N" }
+        currentPhase:
+          oneOf:
+            - $ref: "#/components/schemas/Phase"
+            - type: "null"
+        environment:
+          oneOf:
+            - $ref: "#/components/schemas/Environment"
+            - type: "null"
+        now: { type: string, format: date-time, description: Server time }
+
+    Astronaut:
+      type: object
+      required: [id, missionId, name, role]
+      properties:
+        id: { type: integer, format: int64 }
+        missionId: { type: integer, format: int64 }
+        name: { type: string }
+        role: { $ref: "#/components/schemas/Role" }
+
+    # --- measurements ----------------------------------------------------------------
+    MeasurementView:
+      type: object
+      required: [id, astronautId, indicator, value, unit, measuredAt, source, context, activityId, note, status, missionDay, environment]
+      properties:
+        id: { type: integer, format: int64 }
+        astronautId: { type: integer, format: int64 }
+        indicator: { type: string }
+        value: { type: number }
+        unit: { type: string }
+        measuredAt: { type: string, format: date-time }
+        source: { type: string, enum: [manual, device, questionnaire] }
+        context: { type: string, enum: ["", pre_eva, post_eva] }
+        activityId: { type: [integer, "null"], format: int64 }
+        note: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+        missionDay: { type: integer }
+        environment: { type: string, description: Environment code at measurement time, empty if outside any phase }
+
+    NewMeasurement:
+      type: object
+      required: [indicator, value]
+      additionalProperties: false
+      properties:
+        indicator: { type: string }
+        value: { type: number }
+        measuredAt: { type: string, format: date-time, description: Defaults to now }
+        context: { type: string, enum: ["", pre_eva, post_eva] }
+        note: { type: string }
+
+    CreateMeasurementsRequest:
+      type: object
+      required: [measurements]
+      additionalProperties: false
+      properties:
+        measurements:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: "#/components/schemas/NewMeasurement" }
+
+    Activity:
+      type: object
+      required: [id, astronautId, kind, startsAt, endsAt, note]
+      properties:
+        id: { type: integer, format: int64 }
+        astronautId: { type: integer, format: int64 }
+        kind: { type: string, enum: [eva, landing] }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: [string, "null"], format: date-time }
+        note: { type: string }
+
+    # --- assessment ----------------------------------------------------------------
+    IndicatorResult:
+      type: object
+      required: [code, system, status, fresh, value, unit, measuredAt, environment]
+      properties:
+        code: { type: string }
+        system: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+        fresh: { type: boolean, description: false → status is unknown, value is the last stale reading }
+        value: { type: [number, "null"] }
+        unit: { type: string }
+        measuredAt: { type: [string, "null"], format: date-time }
+        environment: { type: string }
+
+    SystemResult:
+      type: object
+      required: [code, status, score, indicators]
+      properties:
+        code: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+        score: { type: [integer, "null"] }
+        indicators: { type: array, items: { $ref: "#/components/schemas/IndicatorResult" } }
+
+    Readiness:
+      type: object
+      required: [astronautId, missionDay, environment, score, status, cappedByCritical, completeness, systems, assessedAt]
+      properties:
+        astronautId: { type: integer, format: int64 }
+        missionDay: { type: integer }
+        environment: { type: string }
+        score: { type: [integer, "null"], description: 0..100; null when there is no fresh data }
+        status: { $ref: "#/components/schemas/Status" }
+        cappedByCritical: { type: boolean, description: A critical indicator capped the score at 49 }
+        completeness: { type: number, description: Share of indicators with a fresh reading, 0..1 }
+        systems: { type: array, items: { $ref: "#/components/schemas/SystemResult" } }
+        assessedAt: { type: string, format: date-time }
+
+    Recommendation:
+      type: object
+      required: [id, rule, indicator, system, severity, title, action, basis, recheckMinutes, escalate, escalateReason, risks]
+      properties:
+        id: { type: string }
+        rule: { type: string, enum: [indicator_status, repeated_critical, sleep_debt, post_eva_hypoxia, low_mood_streak] }
+        indicator: { type: string }
+        system: { type: string }
+        severity: { $ref: "#/components/schemas/Status" }
+        title: { type: string }
+        action: { type: string }
+        basis: { type: string, description: Why it fired, with the numbers }
+        recheckMinutes: { type: integer, description: 0 = no specific re-check }
+        escalate: { type: boolean, description: Report to the flight surgeon }
+        escalateReason: { type: string }
+        risks: { type: array, items: { type: string }, description: NASA HRP risk codes }
+
+    Guidance:
+      type: object
+      required: [astronautId, environment, commDelayMinS, commDelayMaxS, recommendations]
+      properties:
+        astronautId: { type: integer, format: int64 }
+        environment: { type: string }
+        commDelayMinS: { type: integer }
+        commDelayMaxS: { type: integer }
+        recommendations: { type: array, items: { $ref: "#/components/schemas/Recommendation" } }
