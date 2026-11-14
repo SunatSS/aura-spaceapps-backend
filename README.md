@@ -32,3 +32,35 @@ npm run dev        # http://localhost:5173
 | `npm test` | Unit tests (Vitest) |
 | `npm run lint` | oxlint |
 | `npm run gen:api` | Regenerate API types from `../aura-spaceapps-backend/api/openapi.yaml` |
+
+Live demo: https://aura-spaceapps.onrender.com (free tier — first load after idle takes about a minute).
+
+## Design standard
+
+The interface follows **NASA-STD-3001 Volume 2, Appendix F — Display Standard**
+(https://www.nasa.gov/reference/appendix-f-vol-2/): NASA's required colour table
+(red warning, yellow caution, blue advisory, cyan stale data, gray unavailable), colour never
+as the only cue, 6:1 text contrast, mixed-case text, fixed-width numbers, top navigation with
+an always-visible status area (MET/UTC, alerts, link to Earth), time labelled with its time
+system. No decorative graphics.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).
+
+## Credits and third-party licenses
+
+| Component | License |
+|---|---|
+| [Inter](https://rsms.me/inter/) typeface (via `@fontsource/inter`) | SIL Open Font License 1.1 |
+| [DM Mono](https://github.com/googlefonts/dm-mono) typeface (via `@fontsource/dm-mono`) | SIL Open Font License 1.1 |
+| React, React DOM, React Router, TanStack Query, Recharts, clsx | MIT |
+| Vite, Tailwind CSS, Vitest, Testing Library, oxlint, openapi-typescript (dev tools) | MIT |
+
+Sources used for the design:
+
+- NASA, *NASA-STD-3001 Vol. 2, Appendix F: Display Standard* (updated 2026-04-22) — https://www.nasa.gov/reference/appendix-f-vol-2/
+- NASA Human Research Program — 5 Hazards of Human Spaceflight (https://www.nasa.gov/hrp/hazards/) and Risks of Human Spaceflight (https://www.nasa.gov/hrp/risks/)
+- Typefaces chosen to match those used on nasa.gov (Inter, DM Mono).
+
+AURA is a NASA Space Apps Challenge 2026 project; it is not endorsed by NASA and uses no NASA insignia or logotype.

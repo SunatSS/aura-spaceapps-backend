@@ -1,44 +1,59 @@
 /**
- * Health status levels — the single colour language of the app
- * (AURA Brandbook → Color → Status). Matches the backend enum.
- * A status is never shown by colour alone: always glyph + word (StatusBadge).
+ * Health status → NASA alert class (NASA-STD-3001 Vol. 2 App. F, F.5.10 / F.6.4).
+ * Backend statuses stay nominal | caution | critical | unknown; the UI shows them
+ * as Nominal (uncoloured) | Caution (yellow) | Warning (red) | Stale (cyan).
+ * Advisory (blue) is for informational tips. Colour is always paired with a
+ * glyph shape and the word (StatusBadge).
  */
 export type Status = 'nominal' | 'caution' | 'critical' | 'unknown'
+export type AlertClass = 'nominal' | 'caution' | 'warning' | 'advisory' | 'stale'
 
-export const statusLabel: Record<Status, string> = {
+export const alertClassOf: Record<Status, AlertClass> = {
+  nominal: 'nominal',
+  caution: 'caution',
+  critical: 'warning',
+  unknown: 'stale',
+}
+
+export const alertLabel: Record<AlertClass, string> = {
   nominal: 'Nominal',
   caution: 'Caution',
-  critical: 'Critical',
-  unknown: 'No data',
+  warning: 'Warning',
+  advisory: 'Advisory',
+  stale: 'Stale',
 }
 
-/** Fill background — text on it must be `text-on-status`. */
-export const statusBg: Record<Status, string> = {
-  nominal: 'bg-status-nominal',
-  caution: 'bg-status-caution',
-  critical: 'bg-status-critical',
-  unknown: 'bg-status-unknown',
+/** Fill for badges — text on it must be `text-on-alert`. Nominal has no fill. */
+export const alertBg: Record<AlertClass, string> = {
+  nominal: '',
+  caution: 'bg-caution',
+  warning: 'bg-warning',
+  advisory: 'bg-advisory',
+  stale: 'bg-stale',
 }
 
-/** Status as text or strokes directly on ground/surface. */
-export const statusText: Record<Status, string> = {
-  nominal: 'text-status-nominal-ink',
-  caution: 'text-status-caution-ink',
-  critical: 'text-status-critical-ink',
-  unknown: 'text-status-unknown-ink',
+/** Class as text/strokes on a surface. Nominal is plain ink. */
+export const alertText: Record<AlertClass, string> = {
+  nominal: 'text-ink',
+  caution: 'text-caution-ink',
+  warning: 'text-warning-ink',
+  advisory: 'text-advisory-ink',
+  stale: 'text-stale-ink',
 }
 
-/** Glyph shapes (12×12 viewBox): circle, triangle, diamond, dashed circle. */
-export const statusGlyph: Record<Status, { kind: 'circle' | 'path'; d?: string; dashed?: boolean }> = {
-  nominal: { kind: 'circle' },
-  caution: { kind: 'path', d: 'M6 .8 11.4 11H.6Z' },
-  critical: { kind: 'path', d: 'M6 .4 11.6 6 6 11.6 .4 6Z' },
-  unknown: { kind: 'circle', dashed: true },
+/** Distinct glyph shapes (12×12): ring, triangle, diamond, square, dashed ring. */
+export type Glyph = { shape: 'ring' | 'triangle' | 'diamond' | 'square'; dashed?: boolean }
+export const alertGlyph: Record<AlertClass, Glyph> = {
+  nominal: { shape: 'ring' },
+  caution: { shape: 'triangle' },
+  warning: { shape: 'diamond' },
+  advisory: { shape: 'square' },
+  stale: { shape: 'ring', dashed: true },
 }
 
 const severity: Record<Status, number> = { unknown: 0, nominal: 1, caution: 2, critical: 3 }
 
-/** The worst status in a group, e.g. to colour a body system by its indicators. */
+/** The worst status in a group, e.g. to classify a body system by its indicators. */
 export function worstStatus(statuses: readonly Status[]): Status {
   return statuses.reduce<Status>((worst, s) => (severity[s] > severity[worst] ? s : worst), 'unknown')
 }

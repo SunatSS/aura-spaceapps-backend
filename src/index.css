@@ -1,46 +1,44 @@
 @import 'tailwindcss';
 
-/* AURA design tokens — mirror of the AURA Brandbook (tokens.json).
-   Deep Space is the app theme; Mission Paper (cream) is for print/slides:
-   set data-theme="mission-paper" on <html>. Change values in the brandbook first. */
+/* AURA design tokens v2 — mirror of the AURA Brandbook, aligned to
+   NASA-STD-3001 Vol. 2 Appendix F (Display Standard):
+   https://www.nasa.gov/reference/appendix-f-vol-2/
+   Colour only conveys meaning (F.5.10); text contrast is 6:1+ everywhere.
+   Deep Space is the app theme; Mission Paper is for print/slides
+   (data-theme="mission-paper" on <html>). Change values in the brandbook first. */
 @theme {
   --color-ground: #0b1120;
   --color-surface: #141c2e;
   --color-surface-raised: #1c2740;
   --color-line: #2c3a57;
-  --color-line-strong: #5a6b8c;
+  --color-line-strong: #6b7c9c;
   --color-ink: #f2e8d5;
-  --color-ink-muted: #a9b3c6;
-  --color-aura-blue: #2b6cb0;
-  --color-on-primary: #ffffff;
-  --color-focus-ring: #f2b632;
+  --color-ink-muted: #b8c1d1;
 
-  /* Aura Spectrum — identity only, always all five together, never a status */
-  --color-spectrum-1: #2b7bc0;
-  --color-spectrum-2: #7fb539;
-  --color-spectrum-3: #f2b632;
-  --color-spectrum-4: #ec6f2d;
-  --color-spectrum-5: #d9406a;
+  /* Table F.5-1 (required): red warning, yellow caution, blue advisory, cyan stale, gray unavailable */
+  --color-warning: #ff8080;
+  --color-caution: #ffcc33;
+  --color-advisory: #6cb4ff;
+  --color-stale: #33d6e6;
+  --color-on-alert: #0b1120;
+  --color-warning-ink: #ff8080;
+  --color-caution-ink: #ffcc33;
+  --color-advisory-ink: #6cb4ff;
+  --color-stale-ink: #33d6e6;
+  --color-unavailable: #a0a9b8;
 
-  /* Status fills (same in both themes); text on them is on-status */
-  --color-status-nominal: #4caf6e;
-  --color-status-caution: #f0a830;
-  --color-status-critical: #e5484d;
-  --color-status-unknown: #7d8799;
-  --color-on-status: #0b1120;
-  /* Status as text/strokes on ground */
-  --color-status-nominal-ink: #4caf6e;
-  --color-status-caution-ink: #f0a830;
-  --color-status-critical-ink: #e5484d;
-  --color-status-unknown-ink: #7d8799;
+  /* Table F.5-2 (recommended): dark green commandable background, bright green navigation/cursor */
+  --color-command: #1e6b3a;
+  --color-on-command: #ffffff;
+  --color-command-edge: #3fa565;
+  --color-navigation: #5cf08a;
 
-  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-  --font-sans: 'Barlow', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
 
   --radius-sm: 4px;
-  --radius-md: 12px;
-  --radius-lg: 24px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
 }
 
 [data-theme='mission-paper'] {
@@ -48,14 +46,15 @@
   --color-surface: #fbf6ee;
   --color-surface-raised: #ffffff;
   --color-line: #d9cdb8;
-  --color-line-strong: #8c7f6a;
+  --color-line-strong: #7a6e5b;
   --color-ink: #1d1a16;
-  --color-ink-muted: #5c544a;
-  --color-focus-ring: #2b6cb0;
-  --color-status-nominal-ink: #1b6e37;
-  --color-status-caution-ink: #8a5a00;
-  --color-status-critical-ink: #b3261e;
-  --color-status-unknown-ink: #5d6675;
+  --color-ink-muted: #4f483f;
+  --color-warning-ink: #a8201a;
+  --color-caution-ink: #6e4c00;
+  --color-advisory-ink: #1a5294;
+  --color-stale-ink: #005a66;
+  --color-unavailable: #4e5562;
+  --color-navigation: #1f7a45;
 }
 
 html,
@@ -66,21 +65,13 @@ body,
 
 body {
   @apply bg-ground font-sans text-ink antialiased;
+  font-size: 16px;
+  line-height: 24px;
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-focus-ring);
+  outline: 2px solid var(--color-navigation);
   outline-offset: 2px;
-}
-
-/* Micro-label: SYS-01 · CARDIOVASCULAR */
-@utility label {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 13px;
-  line-height: 16px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 @media (prefers-reduced-motion: reduce) {

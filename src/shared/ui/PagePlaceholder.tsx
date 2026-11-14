@@ -3,11 +3,11 @@ type Props = {
   description: string
 }
 
-/** Temporary page body until the feature is implemented. */
+/** Temporary page body until the feature is implemented. Unique display title, top-left (App. F F.4.2). */
 export function PagePlaceholder({ title, description }: Props) {
   return (
     <section>
-      <h1 className="mb-3 font-display text-[56px] leading-[0.95] font-bold tracking-[-0.01em] uppercase">{title}</h1>
+      <h1 className="mb-3 text-[40px] leading-[48px] font-semibold tracking-[-0.01em]">{title}</h1>
       <p className="max-w-2xl text-ink-muted">{description}</p>
     </section>
   )

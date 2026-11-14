@@ -1,8 +1,9 @@
 import clsx from 'clsx'
 import { NavLink, Outlet } from 'react-router'
 import { useHealth } from '../shared/api/health.ts'
-import { AuraMark } from '../shared/ui/AuraMark.tsx'
-import { StatusBadge } from '../shared/ui/StatusBadge.tsx'
+import { useMission } from '../shared/api/mission.ts'
+import { formatDelay, formatMET, formatUTC } from '../shared/lib/time.ts'
+import { useNow } from '../shared/lib/useNow.ts'
 
 const nav = [
   { to: '/', label: 'Readiness' },
@@ -11,51 +12,75 @@ const nav = [
   { to: '/trends', label: 'Trends' },
 ]
 
+/**
+ * App shell per NASA-STD-3001 Vol. 2 App. F F.4.2: navigation at the top and a
+ * dedicated key-information area that is always visible (time, alerts, link).
+ */
 export function Layout() {
   return (
-    <div className="flex h-full">
-      <aside className="flex w-60 flex-col gap-1 border-r border-line bg-surface p-4">
-        <div className="mb-8 flex items-center gap-3">
-          <AuraMark size={40} />
-          <div>
-            <div className="font-display text-3xl leading-none font-bold tracking-[0.08em]">AURA</div>
-            <div className="label mt-1 text-[10px] leading-3 text-ink-muted">Readiness assessment</div>
-          </div>
-        </div>
-        {nav.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end
-            className={({ isActive }) =>
-              clsx(
-                'rounded-md px-3 py-2 text-[15px] font-semibold transition-colors',
-                isActive ? 'bg-aura-blue text-on-primary' : 'text-ink-muted hover:bg-surface-raised hover:text-ink',
-              )
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
-        <div className="mt-auto flex flex-col gap-3">
-          <BackendStatus />
-          <p className="text-xs leading-4 text-ink-muted">Prototype, not a medical device.</p>
-        </div>
-      </aside>
+    <div className="flex h-full flex-col">
+      <header className="flex h-12 flex-none items-center gap-6 border-b border-line bg-surface px-4">
+        <span className="text-lg font-bold tracking-[0.04em]">AURA</span>
+        <nav aria-label="Main" className="flex gap-1">
+          {nav.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end
+              className={({ isActive }) =>
+                clsx(
+                  'flex h-8 items-center rounded-md border-[1.5px] px-3 text-[15px] font-semibold whitespace-nowrap',
+                  isActive ? 'border-navigation text-ink' : 'border-transparent text-ink-muted hover:text-ink',
+                )
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+        <KeyInfo />
+      </header>
       <main className="flex-1 overflow-auto p-8">
         <Outlet />
       </main>
+      <footer className="flex-none border-t border-line px-4 py-2 text-sm leading-5 text-ink-muted">
+        Prototype for NASA Space Apps Challenge 2026 — not a medical device, not endorsed by NASA.
+      </footer>
     </div>
   )
 }
 
-function BackendStatus() {
-  const { data, isError, isPending } = useHealth()
-  const status = isPending ? 'unknown' : data?.status === 'ok' && !isError ? 'nominal' : 'critical'
+function KeyInfo() {
+  const now = useNow()
+  const mission = useMission()
+  const health = useHealth()
+  const aos = health.data?.status === 'ok' && !health.isError
+  const env = mission.data?.environment
+
   return (
-    <div className="flex items-center justify-between">
-      <span className="label text-ink-muted">Link</span>
-      <StatusBadge status={status} quiet />
+    <div className="ml-auto flex items-center gap-4 font-mono text-sm leading-5 whitespace-nowrap">
+      <Field k="MET" v={mission.data ? formatMET(new Date(mission.data.startedAt), now) : '—'} />
+      <Field k="UTC" v={formatUTC(now)} />
+      <span>
+        <span className="font-sans font-medium text-ink-muted">Link </span>
+        {health.isPending ? (
+          <span className="text-stale-ink">—</span>
+        ) : aos ? (
+          'AOS'
+        ) : (
+          <span className="text-warning-ink">LOS ▼</span>
+        )}
+      </span>
+      {env && <Field k="Earth" v={formatDelay(env.commDelayMinS, env.commDelayMaxS)} />}
     </div>
+  )
+}
+
+function Field({ k, v }: { k: string; v: string }) {
+  return (
+    <span>
+      <span className="font-sans font-medium text-ink-muted">{k} </span>
+      {v}
+    </span>
   )
 }
