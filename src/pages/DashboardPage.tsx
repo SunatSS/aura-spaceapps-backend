@@ -1,4 +1,6 @@
+import { Link } from 'react-router'
 import { roleLabel } from '../features/crew/api.ts'
+import { systemCode } from '../features/readiness/codes.ts'
 import { useCurrentAstronaut } from '../features/crew/context.ts'
 import { useGuidance } from '../features/guidance/api.ts'
 import { RecommendationCard } from '../features/guidance/components/RecommendationCard.tsx'
@@ -70,13 +72,14 @@ export function DashboardPage() {
             </h2>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {readiness.data.systems.map((s, i) => (
-                <SystemTile
+                <Link
                   key={s.code}
-                  code={`SYS-${String(i + 1).padStart(2, '0')}`}
-                  system={s}
-                  catalog={catalog.data}
-                  missionStart={missionStart}
-                />
+                  to={`/body?system=${s.code}`}
+                  className="flex rounded-md [&>article]:flex-1 hover:[&>article]:border-ink"
+                  aria-label={`Open ${systemCode(i)} on the body map`}
+                >
+                  <SystemTile code={systemCode(i)} system={s} catalog={catalog.data} missionStart={missionStart} />
+                </Link>
               ))}
             </div>
           </section>

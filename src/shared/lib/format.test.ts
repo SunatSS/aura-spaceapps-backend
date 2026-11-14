@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Indicator } from '../api/catalog.ts'
-import { formatNumber, limitArrow, unitLabel } from './format.ts'
+import { formatNumber, formatRange, limitArrow, unitLabel } from './format.ts'
 
 const bp = {
   code: 'bp_systolic',
@@ -26,6 +26,17 @@ describe('formatNumber', () => {
     expect(formatNumber(0.25)).toBe('0.25')
     expect(formatNumber(36.700000001)).toBe('36.7')
     expect(formatNumber(-3)).toBe('-3')
+  })
+})
+
+describe('formatRange', () => {
+  it('formats closed, open and scale ranges', () => {
+    expect(formatRange({ ...bp, unit: 'mmHg' } as Indicator, 'mars_surface')).toBe('90–129 mmHg')
+    expect(formatRange({ ...bp, unit: 'mmHg' } as Indicator, 'iss')).toBe('85–129 mmHg')
+    const spo2 = { input: 'number', unit: '%', thresholds: { nominal: { min: 95, max: null }, caution: { min: 92, max: null } } } as unknown as Indicator
+    expect(formatRange(spo2, 'iss')).toBe('≥ 95 %')
+    const mood = { input: 'scale', unit: 'score', max: 5, thresholds: { nominal: { min: 4, max: 5 }, caution: { min: 3, max: 5 } } } as unknown as Indicator
+    expect(formatRange(mood, 'iss')).toBe('4–5 /5')
   })
 })
 
