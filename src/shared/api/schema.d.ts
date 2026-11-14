@@ -21,23 +21,423 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/indicators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health content catalog — indicators, body systems, NASA HRP hazards and risks, environments */
+        get: operations["getCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/missions/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current mission with phases, current phase, environment and mission day */
+        get: operations["getCurrentMission"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/astronauts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mission members, including the ground flight surgeon */
+        get: operations["listAstronauts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/astronauts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        /** One mission member */
+        get: operations["getAstronaut"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/astronauts/{id}/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        /** Readiness Score, per-system and per-indicator statuses */
+        get: operations["getReadiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/astronauts/{id}/guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        /** Active recommendations and escalations to the flight surgeon */
+        get: operations["getGuidance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/astronauts/{id}/measurements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        /** Reading history in chronological order (for charts) */
+        get: operations["listMeasurements"];
+        put?: never;
+        /** Record one or more readings (manual entry or check-in) */
+        post: operations["createMeasurements"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/astronauts/{id}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        /** Activities such as landing and spacewalks (EVA) */
+        get: operations["listActivities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Error: {
+            /** @description Human-readable error message */
+            error: string;
+        };
         Health: {
             /** @enum {string} */
             status: "ok" | "degraded";
             /** @enum {string} */
             db: "ok" | "error";
         };
-        Error: {
-            /** @description Human-readable error message */
-            error: string;
+        /** @enum {string} */
+        Status: "unknown" | "nominal" | "caution" | "critical";
+        /** @enum {string} */
+        EnvironmentCode: "iss" | "lunar_surface" | "mars_transit" | "mars_surface";
+        /** @enum {string} */
+        Role: "crew" | "commander" | "deputy_commander" | "flight_surgeon";
+        Catalog: {
+            disclaimer: string;
+            /** @description Ranges are illustrative — show next to thresholds */
+            thresholdsNote: string;
+            hazards: components["schemas"]["Hazard"][];
+            risks: components["schemas"]["Risk"][];
+            environments: components["schemas"]["Environment"][];
+            systems: components["schemas"]["BodySystem"][];
+            indicators: components["schemas"]["Indicator"][];
+        };
+        Hazard: {
+            code: string;
+            name: string;
+            description: string;
+            url: string;
+        };
+        Risk: {
+            code: string;
+            name: string;
+            description: string;
+            url: string;
+            hazards: string[];
+        };
+        Environment: {
+            code: components["schemas"]["EnvironmentCode"];
+            name: string;
+            description: string;
+            gravityG: number;
+            /** @description One-way signal delay to Earth */
+            commDelayMinS: number;
+            commDelayMaxS: number;
+        };
+        BodySystem: {
+            /** @description Body map zone id: cardiovascular, respiratory, immune, metabolic, behavioral, musculoskeletal, eyes */
+            code: string;
+            name: string;
+            description: string;
+            weight: number;
+            risks: string[];
+        };
+        Range: {
+            min: number | null;
+            max: number | null;
+        };
+        /** @description Inside nominal → nominal; else inside caution → caution; else critical. Inclusive bounds. */
+        Thresholds: {
+            nominal: components["schemas"]["Range"];
+            caution: components["schemas"]["Range"];
+        };
+        Advice: {
+            title: string;
+            action: string;
+            recheckMinutes: number;
+            escalate: boolean;
+        };
+        Indicator: {
+            code: string;
+            name: string;
+            unit: string;
+            system: string;
+            /** @enum {string} */
+            input: "number" | "scale";
+            scaleLabels: {
+                value: number;
+                label: string;
+            }[] | null;
+            /** @description Lowest accepted input value */
+            min: number;
+            /** @description Highest accepted input value */
+            max: number;
+            step: number;
+            /** @description A reading older than this counts as unknown */
+            freshnessHours: number;
+            hazards: string[];
+            risks: string[];
+            thresholds: components["schemas"]["Thresholds"];
+            environmentThresholds?: {
+                [key: string]: components["schemas"]["Thresholds"];
+            };
+            about: string;
+            howToMeasure: string[];
+            whyInSpace: string;
+            guidance: {
+                caution: components["schemas"]["Advice"];
+                critical: components["schemas"]["Advice"];
+            };
+        };
+        Phase: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            environment: components["schemas"]["EnvironmentCode"];
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string | null;
+        };
+        CurrentMission: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            /** Format: date-time */
+            startedAt: string;
+            phases: components["schemas"]["Phase"][];
+            /** @description 1-based "Mission Day N" */
+            missionDay: number;
+            currentPhase: components["schemas"]["Phase"] | null;
+            environment: components["schemas"]["Environment"] | null;
+            /**
+             * Format: date-time
+             * @description Server time
+             */
+            now: string;
+        };
+        Astronaut: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            missionId: number;
+            name: string;
+            role: components["schemas"]["Role"];
+        };
+        MeasurementView: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            astronautId: number;
+            indicator: string;
+            value: number;
+            unit: string;
+            /** Format: date-time */
+            measuredAt: string;
+            /** @enum {string} */
+            source: "manual" | "device" | "questionnaire";
+            /** @enum {string} */
+            context: "" | "pre_eva" | "post_eva";
+            /** Format: int64 */
+            activityId: number | null;
+            note: string;
+            status: components["schemas"]["Status"];
+            missionDay: number;
+            /** @description Environment code at measurement time */
+            environment: string;
+        };
+        NewMeasurement: {
+            indicator: string;
+            value: number;
+            /**
+             * Format: date-time
+             * @description Defaults to now
+             */
+            measuredAt?: string;
+            /** @enum {string} */
+            context?: "" | "pre_eva" | "post_eva";
+            note?: string;
+        };
+        CreateMeasurementsRequest: {
+            measurements: components["schemas"]["NewMeasurement"][];
+        };
+        Activity: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            astronautId: number;
+            /** @enum {string} */
+            kind: "eva" | "landing";
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string | null;
+            note: string;
+        };
+        IndicatorResult: {
+            code: string;
+            system: string;
+            status: components["schemas"]["Status"];
+            /** @description false → status is unknown */
+            fresh: boolean;
+            value: number | null;
+            unit: string;
+            /** Format: date-time */
+            measuredAt: string | null;
+            environment: string;
+        };
+        SystemResult: {
+            code: string;
+            status: components["schemas"]["Status"];
+            score: number | null;
+            indicators: components["schemas"]["IndicatorResult"][];
+        };
+        Readiness: {
+            /** Format: int64 */
+            astronautId: number;
+            missionDay: number;
+            environment: string;
+            /** @description 0..100; null when there is no fresh data */
+            score: number | null;
+            status: components["schemas"]["Status"];
+            /** @description A critical indicator capped the score at 49 */
+            cappedByCritical: boolean;
+            /** @description Share of indicators with a fresh reading */
+            completeness: number;
+            systems: components["schemas"]["SystemResult"][];
+            /** Format: date-time */
+            assessedAt: string;
+        };
+        Recommendation: {
+            id: string;
+            /** @enum {string} */
+            rule: "indicator_status" | "repeated_critical" | "sleep_debt" | "post_eva_hypoxia" | "low_mood_streak";
+            indicator: string;
+            system: string;
+            severity: components["schemas"]["Status"];
+            title: string;
+            action: string;
+            /** @description Why it fired */
+            basis: string;
+            /** @description 0 = no specific re-check */
+            recheckMinutes: number;
+            /** @description Report to the flight surgeon */
+            escalate: boolean;
+            escalateReason: string;
+            /** @description NASA HRP risk codes */
+            risks: string[];
+        };
+        Guidance: {
+            /** Format: int64 */
+            astronautId: number;
+            environment: string;
+            commDelayMinS: number;
+            commDelayMaxS: number;
+            recommendations: components["schemas"]["Recommendation"][];
         };
     };
-    responses: never;
-    parameters: never;
+    responses: {
+        /** @description Error */
+        Error: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+    };
+    parameters: {
+        AstronautId: number;
+        From: string;
+        To: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -71,6 +471,232 @@ export interface operations {
                     "application/json": components["schemas"]["Health"];
                 };
             };
+        };
+    };
+    getCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Catalog"];
+                };
+            };
+        };
+    };
+    getCurrentMission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The mission */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentMission"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listAstronauts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Crew list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        astronauts: components["schemas"]["Astronaut"][];
+                    };
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    getAstronaut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The astronaut */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Astronaut"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    getReadiness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The assessment */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Readiness"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    getGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recommendations, most severe first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Guidance"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listMeasurements: {
+        parameters: {
+            query?: {
+                /** @description Indicator code, e.g. bp_systolic */
+                indicator?: string;
+                from?: components["parameters"]["From"];
+                to?: components["parameters"]["To"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Readings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        measurements: components["schemas"]["MeasurementView"][];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    createMeasurements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMeasurementsRequest"];
+            };
+        };
+        responses: {
+            /** @description Created readings with their statuses */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        measurements: components["schemas"]["MeasurementView"][];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listActivities: {
+        parameters: {
+            query?: {
+                from?: components["parameters"]["From"];
+                to?: components["parameters"]["To"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["AstronautId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Activities in chronological order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        activities: components["schemas"]["Activity"][];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
 }
