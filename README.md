@@ -32,11 +32,12 @@ AURA_STATIC_DIR=../aura-spaceapps-frontend/dist go run ./cmd/aura
 
 ## API
 
-Contract: [`api/openapi.yaml`](api/openapi.yaml). Main endpoints under `/api/v1`:
+Contract: [`api/openapi.yaml`](api/openapi.yaml), served at `/api/v1/openapi.yaml`; interactive docs (Swagger UI, embedded, works offline) at `/api/docs/` — live: https://aura-spaceapps.onrender.com/api/docs/. Main endpoints under `/api/v1`:
 `/auth/login`, `/auth/me`, `/indicators`, `/missions/current`, `/astronauts`, `/astronauts/{id}/readiness`,
 `/astronauts/{id}/guidance`, `/astronauts/{id}/measurements` (GET/POST), `/astronauts/{id}/activities`,
 `/astronauts/{id}/report` (JSON or `?format=text`), `/crew/overview`, `/demo/reset`,
-`/vehicle`, `/vehicle/telemetry`, `/supplies` (+ `/journal`, `/{id}/use|count|dispose`), `/ingest`.
+`/vehicle`, `/vehicle/telemetry`, `/supplies` (+ `/journal`, `/{id}/use|count|dispose`), `/ingest`,
+`/astronauts/{id}/profile`, `/astronauts/{id}/tasks`, `/auth/passkeys/*`, `/demo/environment`.
 
 Onboard systems (environment sensors, dosimeters, wearables) push readings to `POST /api/v1/ingest`
 with a bearer token (`AURA_INGEST_TOKEN`; the public demo uses `aura-demo-ingest`):

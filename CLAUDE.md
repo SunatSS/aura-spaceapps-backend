@@ -36,6 +36,9 @@ internal/
   report/            отчёт для флайт-хирурга (JSON и текст): сводка, тревоги, тренды за 7 дней, воздух модуля
   vehicle/           среда в модулях: телеметрия → статусы по порогам catalog.vehicle_parameters (Stale по свежести)
   supplies/          медсклад: статусы Warning/Caution/Advisory, прогноз расхода до конца миссии
+  tasks/             расписание → задачи на день, просрочка, серии и бейджи
+  webauthn/          passkeys на stdlib: CBOR, ES256/RS256 (webauthntest — программный аутентификатор для тестов)
+api/embed.go         встраивает openapi.yaml и Swagger UI (api/docs/, swagger-ui-dist 5.35.0) → /api/docs/
   storage/           SQLite: подключение, миграции, репозитории (Queries, Tx)
     migrations/      NNNN_name.sql, встраиваются в бинарник через embed
   seed/              демо-миссия к Марсу: 30 суток, перелёт → посадка → поверхность с EVA
