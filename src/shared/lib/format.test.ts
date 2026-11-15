@@ -61,6 +61,10 @@ describe('formatRange', () => {
     const mood = { input: 'scale', unit: 'score', max: 5, thresholds: { nominal: { min: 4, max: 5 }, caution: { min: 3, max: 5 } } } as unknown as Indicator
     expect(formatRange(mood, 'iss')).toBe('4–5 /5')
   })
+  it('spells out a range that starts below zero', () => {
+    const mass = { input: 'number', unit: '%', thresholds: { nominal: { min: -2, max: 2 }, caution: { min: -5, max: 5 } } } as unknown as Indicator
+    expect(formatRange(mass, 'iss')).toBe('-2 to 2 %')
+  })
 })
 
 describe('unitLabel', () => {

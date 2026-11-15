@@ -54,11 +54,16 @@ export function validateValue(ind: Indicator, raw: string): string {
   return ''
 }
 
+/** A closed interval: "90–129", or "-2 to 2" when it starts below zero (a dash next to a minus sign is unreadable). */
+function span(min: number, max: number): string {
+  return min < 0 ? `${formatNumber(min)} to ${formatNumber(max)}` : `${formatNumber(min)}–${formatNumber(max)}`
+}
+
 /** Nominal range as text: "90–129 mmHg", "≥ 95 %", "4–5 /5". */
 export function formatRange(ind: Indicator, environment: string): string {
   const { min, max } = thresholdsFor(ind, environment).nominal
   const unit = ind.input === 'scale' ? `/${ind.max}` : ind.unit
-  if (min !== null && max !== null) return `${formatNumber(min)}–${formatNumber(max)} ${unit}`
+  if (min !== null && max !== null) return `${span(min, max)} ${unit}`
   if (min !== null) return `≥ ${formatNumber(min)} ${unit}`
   if (max !== null) return `≤ ${formatNumber(max)} ${unit}`
   return 'any'
@@ -78,7 +83,7 @@ export function rangeLabel(range: Bounds, ind: Indicator | undefined): string {
   const unit = ind ? (ind.input === 'scale' ? `/${ind.max}` : ind.unit) : ''
   const { min, max } = range
   const has = (v: number | null | undefined): v is number => v !== null && v !== undefined
-  if (has(min) && has(max)) return min === max ? `${formatNumber(min)} ${unit}` : `${formatNumber(min)}–${formatNumber(max)} ${unit}`
+  if (has(min) && has(max)) return min === max ? `${formatNumber(min)} ${unit}` : `${span(min, max)} ${unit}`
   if (has(min)) return `≥ ${formatNumber(min)} ${unit}`
   if (has(max)) return `≤ ${formatNumber(max)} ${unit}`
   return 'any'
