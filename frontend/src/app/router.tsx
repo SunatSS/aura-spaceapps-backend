@@ -1,0 +1,38 @@
+import { createBrowserRouter } from 'react-router'
+import { AccountPage } from '../pages/AccountPage.tsx'
+import { BodyMapPage } from '../pages/BodyMapPage.tsx'
+import { CrewPage } from '../pages/CrewPage.tsx'
+import { DashboardPage } from '../pages/DashboardPage.tsx'
+import { LogPage } from '../pages/LogPage.tsx'
+import { NotFoundPage, RouteErrorPage } from '../pages/NotFoundPage.tsx'
+import { ProfilePage } from '../pages/ProfilePage.tsx'
+import { ReportPage } from '../pages/ReportPage.tsx'
+import { SuppliesPage } from '../pages/SuppliesPage.tsx'
+import { VehiclePage } from '../pages/VehiclePage.tsx'
+import { Layout } from './Layout.tsx'
+
+export const router = createBrowserRouter([
+  {
+    element: <Layout />,
+    children: [
+      {
+        // Errors in any display render inside the app shell, keeping the status bar visible.
+        errorElement: <RouteErrorPage />,
+        children: [
+          { index: true, element: <DashboardPage /> },
+          { path: 'body', element: <BodyMapPage /> },
+          { path: 'crew', element: <CrewPage /> },
+          { path: 'log', element: <LogPage /> },
+          { path: 'report', element: <ReportPage /> },
+          { path: 'vehicle', element: <VehiclePage /> },
+          { path: 'account', element: <AccountPage /> },
+          { path: 'profile', element: <ProfilePage /> },
+          { path: 'supplies', element: <SuppliesPage /> },
+          // Charts (Recharts) load only when Trends is opened.
+          { path: 'trends', lazy: async () => ({ Component: (await import('../pages/TrendsPage.tsx')).TrendsPage }) },
+          { path: '*', element: <NotFoundPage /> },
+        ],
+      },
+    ],
+  },
+])
