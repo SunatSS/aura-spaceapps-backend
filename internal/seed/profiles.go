@@ -42,7 +42,6 @@ func (g *generator) profiles(ctx context.Context, q storage.Queries, m domain.Mi
 		} {
 			pi := catalog.PersonalIndicator{Baseline: f(v)}
 			if idx == ferreira && code == "heart_rate" {
-				pi.Baseline = f(56)
 				pi.Thresholds = &catalog.Thresholds{Nominal: catalog.Range{Min: f(42), Max: f(95)}, Caution: catalog.Range{Min: f(38), Max: f(115)}}
 				pi.Note = "Athlete's heart: personal range set before flight."
 			}

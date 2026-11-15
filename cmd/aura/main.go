@@ -59,6 +59,21 @@ func run() error {
 			}
 			logger.Info("database was empty: demo mission seeded")
 		}
+		// A demo that stays up keeps its readings fresh (see seed.KeepFresh).
+		go func() {
+			tick := time.NewTicker(time.Minute)
+			defer tick.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-tick.C:
+					if err := seed.KeepFresh(ctx, db, cat, time.Now()); err != nil && ctx.Err() == nil {
+						logger.Warn("demo keep-fresh failed", "err", err)
+					}
+				}
+			}
+		}()
 	}
 
 	srv := &http.Server{

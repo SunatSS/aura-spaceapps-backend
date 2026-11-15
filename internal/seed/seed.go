@@ -124,7 +124,8 @@ var crew = []member{
 	},
 	ferreira: {
 		name: "Lucas Ferreira", role: domain.RoleCrew, module: "hab",
-		base: values{hr: 64, sys: 118, dia: 76, spo2: 98, temp: 36.7, glucose: 95, sleep: 7.8, mood: 4.4, stress: 1.6},
+		// Athlete's heart: a resting rate below the standard 50 bpm, nominal in his personal range.
+		base: values{hr: 48, sys: 118, dia: 76, spo2: 98, temp: 36.7, glucose: 95, sleep: 7.8, mood: 4.4, stress: 1.6},
 		adjust: func(w int, v *values) {
 			if w == windowDays-1 { // morning after the EVA: oxygen still low
 				v.spo2 = 91

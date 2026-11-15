@@ -86,11 +86,14 @@ func (r Range) Contains(v float64) bool {
 	return (r.Min == nil || v >= *r.Min) && (r.Max == nil || v <= *r.Max)
 }
 
-// String renders the range for people: "90–129", "≥ 95", "≤ 37.5" or "any".
+// String renders the range for people: "90–129", "-2 to 2" (a dash next to a
+// minus sign is unreadable), "≥ 95", "≤ 37.5" or "any".
 func (r Range) String() string {
 	switch {
 	case r.Min != nil && r.Max != nil && *r.Min == *r.Max:
 		return FormatNumber(*r.Min)
+	case r.Min != nil && r.Max != nil && *r.Min < 0:
+		return FormatNumber(*r.Min) + " to " + FormatNumber(*r.Max)
 	case r.Min != nil && r.Max != nil:
 		return FormatNumber(*r.Min) + "–" + FormatNumber(*r.Max)
 	case r.Min != nil:

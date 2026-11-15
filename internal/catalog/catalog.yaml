@@ -241,8 +241,9 @@ indicators:
     trend: true
     hazards: [gravity]
     risks: [cardiovascular]
-    # Source: general clinical reference (AHA categories: normal <120,
-    # stage 1 130–139, stage 2 >=140, crisis >180), simplified to three bands.
+    # Source: 2018 ESC/ESH hypertension guidelines — optimal and normal up to
+    # 129 mmHg, high normal and grade 1 up to 159, grade 2 from 160; hypotension
+    # below 90. Simplified to three bands.
     thresholds:
       nominal: {min: 90, max: 129}
       caution: {min: 80, max: 159}
@@ -254,14 +255,14 @@ indicators:
     why_in_space: Weightlessness pushes fluids toward the head and changes how the heart and vessels work, which raises cardiovascular risk.
     guidance:
       caution:
-        title: Blood pressure is elevated
-        action: Rest for 15 minutes, reduce salt and caffeine today, re-measure in the evening.
+        title: Blood pressure is outside the normal range
+        action: Rest seated for 15 minutes and re-measure in the evening. If high — reduce salt and caffeine today; if low — drink water and stand up slowly.
         recheck_minutes: 240
         escalate: false
         supplies: [bp_cuff]
       critical:
         title: Blood pressure is critically abnormal
-        action: Stop physical work, sit down, breathe slowly and re-measure in 5 minutes.
+        action: Stop physical work, sit down (lie down if you feel faint), breathe slowly and re-measure in 5 minutes.
         recheck_minutes: 5
         escalate: false
         supplies: [bp_cuff]
@@ -279,8 +280,9 @@ indicators:
     trend: true
     hazards: [gravity]
     risks: [cardiovascular]
-    # Source: general clinical reference (AHA: normal <80, stage 1 80–89,
-    # stage 2 >=90), simplified to three bands.
+    # Source: 2018 ESC/ESH hypertension guidelines — optimal and normal up to
+    # 84 mmHg, high normal and grade 1 up to 99, grade 2 from 100; hypotension
+    # below 60. Simplified to three bands.
     thresholds:
       nominal: {min: 60, max: 84}
       caution: {min: 50, max: 99}
@@ -290,13 +292,13 @@ indicators:
     why_in_space: Diastolic pressure reacts to fluid shifts and stress in the same way as systolic pressure.
     guidance:
       caution:
-        title: Diastolic pressure is elevated
-        action: Rest for 15 minutes, reduce salt and caffeine today, re-measure in the evening.
+        title: Diastolic pressure is outside the normal range
+        action: Rest seated for 15 minutes and re-measure in the evening. If high — reduce salt and caffeine today; if low — drink water and stand up slowly.
         recheck_minutes: 240
         escalate: false
       critical:
         title: Diastolic pressure is critically abnormal
-        action: Stop physical work, sit down, breathe slowly and re-measure in 5 minutes.
+        action: Stop physical work, sit down (lie down if you feel faint), breathe slowly and re-measure in 5 minutes.
         recheck_minutes: 5
         escalate: false
 
@@ -348,7 +350,8 @@ indicators:
     freshness_hours: 24
     hazards: [hostile_environment, isolation]
     risks: [immune, microbiome]
-    # Source: general clinical reference, normal 36.1–37.5 °C; fever >=38.
+    # Source: general clinical reference, normal 36.1–37.5 °C; a low-grade
+    # fever up to 38.4 °C is Caution, 38.5 °C and above is Warning.
     thresholds:
       nominal: {min: 36.1, max: 37.5}
       caution: {min: 35.5, max: 38.4}
@@ -383,11 +386,12 @@ indicators:
     freshness_hours: 48
     hazards: [distance, hostile_environment]
     risks: [nutrition]
-    # Source: general clinical reference; ADA hypoglycemia level 1 <70,
-    # level 2 <54 mg/dL; 140/180 mg/dL post-meal upper references.
+    # Source: general clinical reference; ADA glycemic levels — hypoglycemia
+    # level 1 <70, level 2 <54 mg/dL; hyperglycemia level 1 >180, level 2
+    # >250 mg/dL; 140 mg/dL is the upper post-meal reference without diabetes.
     thresholds:
       nominal: {min: 70, max: 140}
-      caution: {min: 54, max: 180}
+      caution: {min: 54, max: 250}
     about: Sugar level in your blood from a finger-prick glucometer.
     how_to_measure:
       - Wash and dry your hands.
@@ -422,17 +426,19 @@ indicators:
     hazards: [isolation, hostile_environment]
     risks: [sleep, behavioral]
     # Source: adult sleep recommendation 7–9 h (AASM / National Sleep Foundation).
+    # Warning only below 5 h: ISS crews average about 6 h a night (Barger et al.,
+    # Lancet Neurology 2014), so one 6-hour night is Caution, not Warning.
     thresholds:
       nominal: {min: 7, max: 9}
-      caution: {min: 6, max: null}
+      caution: {min: 5, max: null}
     about: Hours you actually slept during the last sleep period.
     how_to_measure:
       - Right after waking, estimate the hours you slept (or take the value from the wrist sensor).
     why_in_space: Chronic sleep loss and disrupted body clocks are a known HRP risk; fatigue causes errors in critical operations.
     guidance:
       caution:
-        title: You slept less than recommended
-        action: Plan a 20-minute nap, avoid caffeine after midday, dim lights an hour before sleep.
+        title: Sleep is outside the recommended 7–9 h
+        action: If short — plan a 20-minute nap, avoid caffeine after midday and dim lights an hour before sleep. If long — note how rested you feel; oversleeping can be a sign of fatigue or illness.
         recheck_minutes: 0
         escalate: false
       critical:
@@ -602,7 +608,8 @@ indicators:
     trend: true
     hazards: [gravity]
     risks: [bone, fitness, cardiovascular]
-    # Illustrative: ISS crews plan about 2.5 h of exercise a day.
+    # Illustrative: ISS crews exercise about 2 h a day (2.5 h scheduled with
+    # setup and cleanup).
     thresholds:
       nominal: {min: 120, max: null}
       caution: {min: 60, max: null}
@@ -655,7 +662,7 @@ indicators:
   - code: radiation_dose
     name: Personal radiation dose, last 24 h
     short_name: Dose
-    unit: mSv
+    unit: mGy
     system: immune
     input: number
     min: 0
@@ -664,12 +671,13 @@ indicators:
     freshness_hours: 36
     hazards: [radiation]
     risks: [radiation_cancer, immune]
-    # Illustrative: MSL RAD measured ~0.6 mSv/day in transit and ~0.2 mSv/day on
-    # the surface; a solar particle event can add tens of mSv.
+    # Illustrative: MSL RAD measured an absorbed dose of ~0.48 mGy/day in transit
+    # and ~0.21 mGy/day on the Mars surface (dose equivalent ~1.8 and ~0.6 mSv/day);
+    # a solar particle event can add tens of mGy.
     thresholds:
       nominal: {min: null, max: 1.0}
       caution: {min: null, max: 2.0}
-    about: Dose recorded by your personal dosimeter over the last 24 hours.
+    about: Absorbed dose recorded by your personal dosimeter over the last 24 hours.
     how_to_measure:
       - Read the personal dosimeter in the evening, or let it send the value automatically.
     why_in_space: Outside Earth's magnetic field, cosmic rays and solar storms add a dose that raises the lifetime cancer risk.
@@ -725,11 +733,11 @@ indicators:
 countermeasures:
   - code: resistance_exercise
     title: Resistance exercise
-    how: Squats, deadlifts and heel raises on the resistance device, about 1 h a day, 6 days a week.
+    how: Squats, deadlifts and heel raises on the resistance device, about 75 min a day.
     risks: [bone, fitness]
   - code: aerobic_exercise
     title: Aerobic exercise
-    how: Treadmill or cycle intervals, 30–45 min a day, keeping heart rate in the prescribed zone.
+    how: Treadmill or cycle intervals, about 45 min a day, keeping heart rate in the prescribed zone — 2 h of exercise a day together with resistance work.
     risks: [fitness, cardiovascular]
   - code: hydration
     title: Hydration and diet
@@ -833,10 +841,11 @@ vehicle_parameters:
     max: 120
     step: 0.1
     freshness_minutes: 240
-    # Source: NASA-STD-3001 Vol. 2 §6.2.1 — sea-level-equivalent cabin (ISS 101.3 kPa).
+    # Source: NASA-STD-3001 Vol. 2 [V2 6006] — indefinite exposure at
+    # 34.5 < p ≤ 103 kPa. Bands are for a sea-level-equivalent cabin (ISS 101.3 kPa).
     thresholds:
-      nominal: {min: 97, max: 104}
-      caution: {min: 94, max: 106}
+      nominal: {min: 97, max: 103}
+      caution: {min: 94, max: 105}
     about: Total air pressure in the module.
     guidance:
       caution:
@@ -858,7 +867,8 @@ vehicle_parameters:
     max: 50
     step: 0.1
     freshness_minutes: 240
-    # Source: NASA-STD-3001 Vol. 2 §6.2.1 — ppO₂ 19.5–23.1 kPa (2.83–3.35 psia) at sea-level pressure.
+    # Source: ISS operating range, ppO₂ 19.5–23.1 kPa (2.83–3.35 psia) at sea-level
+    # pressure. NASA-STD-3001 Vol. 2 [V2 6003] sets its limits as inspired O₂.
     thresholds:
       nominal: {min: 19.5, max: 23.1}
       caution: {min: 18.0, max: 25.0}
@@ -885,7 +895,7 @@ vehicle_parameters:
     max: 30
     step: 0.1
     freshness_minutes: 240
-    # Source: NASA-STD-3001 Vol. 2 §6.2.1.2 — ppCO₂ ≤ 3 mmHg (24-h average); ISS
+    # Source: NASA-STD-3001 Vol. 2 [V2 6004] — ppCO₂ ≤ 3 mmHg (one-hour average); ISS
     # experience links 3–5 mmHg to headaches. Caution band is illustrative.
     thresholds:
       nominal: {min: null, max: 3.0}
@@ -911,7 +921,7 @@ vehicle_parameters:
     max: 60
     step: 0.1
     freshness_minutes: 240
-    # Source: NASA-STD-3001 Vol. 2 §6.2.3 — habitable temperature 18–27 °C.
+    # Source: NASA-STD-3001 Vol. 2 [V2 6012], crew health environmental limits — 18–27 °C.
     thresholds:
       nominal: {min: 18, max: 27}
       caution: {min: 16, max: 29}
@@ -936,7 +946,7 @@ vehicle_parameters:
     max: 100
     step: 1
     freshness_minutes: 240
-    # Source: NASA-STD-3001 Vol. 2 §6.2.4 — relative humidity 25–75 %.
+    # Source: NASA-STD-3001 Vol. 2 [V2 6012], crew health environmental limits — relative humidity 25–75 %.
     thresholds:
       nominal: {min: 25, max: 75}
       caution: {min: 20, max: 80}
@@ -990,13 +1000,13 @@ rules:
     title: Accumulating sleep debt
     action: Shift non-critical tasks, protect the next sleep period, darken the crew quarters and avoid caffeine after midday.
     recheck_minutes: 0
-    escalate_reason: Three or more nights in a row with less than 6 hours of sleep.
+    escalate_reason: Three or more nights in a row with less than 5 hours of sleep.
     supplies: [sleep_kit]
   - id: post_eva_hypoxia
     title: Low blood oxygen after a spacewalk
     action: Rest on cabin air, check for decompression symptoms (joint pain, tingling, headache) and re-measure SpO₂ every 15 minutes.
     recheck_minutes: 15
-    escalate_reason: Blood oxygen stayed below normal after a spacewalk (hypoxia / decompression risk).
+    escalate_reason: Blood oxygen was below normal after a spacewalk (hypoxia / decompression risk).
     supplies: [oxygen_mask, oxygen_cylinder, pulse_oximeter]
   - id: low_mood_streak
     title: Low mood or high stress for several days

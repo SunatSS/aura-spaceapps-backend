@@ -132,6 +132,14 @@ func TestEvaluate(t *testing.T) {
 			wantIDs: []string{"indicator_status:spo2"},
 		},
 		{
+			name: "post-EVA low reading followed by a nominal one has recovered",
+			readings: []reading{
+				{"spo2", 98, time.Hour, ""},
+				{"spo2", 91, 20 * time.Hour, domain.ContextPostEVA},
+			},
+			wantIDs: nil,
+		},
+		{
 			name: "three short nights trigger sleep debt without escalation",
 			readings: []reading{
 				{"sleep_hours", 6.4, time.Hour, ""},
@@ -145,9 +153,9 @@ func TestEvaluate(t *testing.T) {
 		{
 			name: "three very short nights escalate sleep debt",
 			readings: []reading{
-				{"sleep_hours", 5.0, time.Hour, ""},
-				{"sleep_hours", 5.5, day, ""},
-				{"sleep_hours", 5.2, 2 * day, ""},
+				{"sleep_hours", 4.0, time.Hour, ""},
+				{"sleep_hours", 4.5, day, ""},
+				{"sleep_hours", 4.75, 2 * day, ""},
 			},
 			wantIDs:      []string{"sleep_debt:sleep_hours"},
 			wantEscalate: map[string]bool{"sleep_debt:sleep_hours": true},
@@ -292,8 +300,18 @@ func TestTrendAndEarthDelay(t *testing.T) {
 		{"body_mass_change", -1.3, 7 * day, ""}, {"body_mass_change", -1.7, time.Hour, ""},
 	}, 0)
 	tr, ok := recs["trend:body_mass_change"]
-	if !ok || tr.Severity != domain.StatusCaution || !strings.Contains(tr.Basis, "(-2–2 %) in about 5 days") || !strings.Contains(tr.Basis, "3 weeks ago") {
+	if !ok || tr.Severity != domain.StatusCaution || !strings.Contains(tr.Basis, "(-2 to 2 %) in about 5 days") || !strings.Contains(tr.Basis, "3 weeks ago") {
 		t.Errorf("trend = %+v", tr)
+	}
+
+	// Weekly readings: the last one is 6 days old and the fitted line has
+	// crossed −2 % since then — say so instead of "in about 1 day".
+	recs = evaluate([]reading{
+		{"body_mass_change", -0.9, 20 * day, ""}, {"body_mass_change", -1.4, 13 * day, ""},
+		{"body_mass_change", -1.8, 6 * day, ""},
+	}, 0)
+	if tr := recs["trend:body_mass_change"]; !strings.Contains(tr.Basis, "may already be outside the nominal range (-2 to 2 %)") {
+		t.Errorf("overdue trend basis = %q", tr.Basis)
 	}
 
 	// A stable series is not a trend, and neither is noise.

@@ -43,7 +43,7 @@ const (
 	trendMinSpan        = 10.0 // days of data needed for a trend
 	trendMinShare       = 0.1  // drift over the window must be ≥ 10 % of the nominal width
 	sleepNominalMinimum = 7.0  // fallback if the catalog has no lower nominal bound
-	sleepSevereMinimum  = 6.0  // fallback if the catalog has no lower caution bound
+	sleepSevereMinimum  = 5.0  // fallback if the catalog has no lower caution bound
 )
 
 type Recommendation struct {
@@ -169,8 +169,12 @@ func (e *evaluator) fromRule(ruleID, code string, severity domain.Status, basis 
 
 // postEVAHypoxia: SpO₂ below nominal in the most recent post-EVA reading of
 // the last 48 h → escalate (HRP risks: hypoxia, decompression sickness).
+// A later nominal reading means it has recovered: the rule no longer fires.
 func (e *evaluator) postEVAHypoxia() {
 	const code = "spo2"
+	if cur := e.current[code]; cur.Fresh && cur.Status == domain.StatusNominal {
+		return
+	}
 	for _, m := range e.history[code] {
 		if e.in.Now.Sub(m.MeasuredAt) > postEVAWindow {
 			return
@@ -183,7 +187,9 @@ func (e *evaluator) postEVAHypoxia() {
 			return
 		}
 		severity := domain.Worst(st, e.current[code].Status)
-		basis := fmt.Sprintf("SpO₂ %s %% after the spacewalk at %s UTC (nominal ≥ 95 %%).", num(m.Value), m.MeasuredAt.UTC().Format("Jan 2 15:04"))
+		ind, _ := e.in.Catalog.Indicator(code)
+		nominal := e.in.Profile.ThresholdsFor(ind, e.in.Mission.EnvironmentAt(m.MeasuredAt)).Nominal
+		basis := fmt.Sprintf("SpO₂ %s %% after the spacewalk at %s UTC (nominal %s %%).", num(m.Value), m.MeasuredAt.UTC().Format("Jan 2 15:04"), nominal)
 		e.out = append(e.out, e.fromRule(RulePostEVAHypoxia, code, severity, basis, true))
 		e.covered[code] = true
 		return
@@ -429,7 +435,12 @@ func (e *evaluator) trend() {
 		if limit == nil || math.Abs(slope*span) < trendMinShare*rangeWidth(thr, ind) {
 			continue
 		}
-		days := int(math.Max(1, math.Ceil((*limit-fitted)/slope-sinceLast)))
+		// Days from now until the fitted line crosses the limit. With weekly
+		// readings the crossing can already lie behind the last reading.
+		outlook := fmt.Sprintf("it may already be outside the nominal range (%s) — re-measure to confirm", rangeWithUnit(thr, ind))
+		if left := (*limit-fitted)/slope - sinceLast; left > 0 {
+			outlook = fmt.Sprintf("it leaves the nominal range (%s) in about %s", rangeWithUnit(thr, ind), plural(int(math.Ceil(left)), "day"))
+		}
 		ago := fmt.Sprintf("%d days ago", int(math.Round(span)))
 		if weeks := int(math.Round(span / 7)); weeks >= 2 {
 			ago = fmt.Sprintf("%d weeks ago", weeks)
@@ -437,14 +448,14 @@ func (e *evaluator) trend() {
 		e.out = append(e.out, Recommendation{
 			ID: RuleTrend + ":" + ind.Code, Rule: RuleTrend, Indicator: ind.Code, System: ind.System,
 			Severity: domain.StatusCaution, Title: ind.Name + ": " + strings.ToLower(rule.Title[:1]) + rule.Title[1:], Action: rule.Action,
-			Basis: fmt.Sprintf("%s: %s now, %s %s; at this rate it leaves the nominal range (%s) in about %s.",
-				ind.Name, ind.FormatValue(pts[0].Value), ind.FormatValue(oldest.Value), ago, rangeWithUnit(thr, ind), plural(days, "day")),
+			Basis: fmt.Sprintf("%s: %s now, %s %s; at this rate %s.",
+				ind.Name, ind.FormatValue(pts[0].Value), ind.FormatValue(oldest.Value), ago, outlook),
 			Risks: ind.Risks,
 		})
 	}
 }
 
-// rangeWithUnit is "−2–2 %" or "3/5"-style for scales.
+// rangeWithUnit is "-2 to 2 %" or "3/5"-style for scales.
 func rangeWithUnit(r catalog.Range, ind catalog.Indicator) string {
 	if ind.Input == catalog.InputScale {
 		return r.String() + "/" + num(ind.Max)

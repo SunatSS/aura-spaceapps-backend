@@ -95,6 +95,6 @@ Sources used for the health content (`internal/catalog/catalog.yaml`):
 - NASA Human Research Program — [5 Hazards of Human Spaceflight](https://www.nasa.gov/hrp/hazards/), [Risks of Human Spaceflight](https://www.nasa.gov/hrp/risks/), [Ongoing HRP Research](https://www.nasa.gov/hrp/ongoing-hrp-research/) (incl. Standard Measures and ARCHeR).
 - Canadian Space Agency — [Monitoring radiation for astronaut health](https://www.asc-csa.gc.ca/eng/news/articles/2026/2026-02-26-monitoring-radiation-astronaut-health.asp), [Why do we conduct science experiments in space?](https://www.asc-csa.gc.ca/eng/iss/science/why-do-we-conduct-science-experiments-in-space.asp).
 - NASA, [NASA-STD-3001 Vol. 2, Appendix F: Display Standard](https://www.nasa.gov/reference/appendix-f-vol-2/) — alert classes and time formats used by the API.
-- Indicator thresholds are illustrative general clinical references (AHA blood-pressure categories, ADA hypoglycemia levels, adult sleep recommendations); the NASA resources define which risks matter, not numeric limits.
+- Indicator thresholds are illustrative general clinical references (ESC/ESH blood-pressure grades, ADA glycemic levels, adult sleep recommendations); the NASA resources define which risks matter, not numeric limits.
 
 AURA is a NASA Space Apps Challenge 2026 project; it is not endorsed by NASA and uses no NASA insignia or logotype.
