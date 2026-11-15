@@ -1,6 +1,13 @@
 .git
-bin/
+**/node_modules
+**/dist
+**/bin
 *.db
 *.db-shm
 *.db-wal
+**/*.db
+**/*.db-shm
+**/*.db-wal
 .env
+**/.env
+docker-compose.yml

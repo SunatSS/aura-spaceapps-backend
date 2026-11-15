@@ -1,4 +1,4 @@
-# aura-spaceapps-frontend
+# AURA frontend
 
 Web UI for **AURA — Astronaut Universal Readiness Assessment** (NASA Space Apps 2026,
 challenge "Create Health Monitoring Software for Astronauts on Space Missions").
@@ -7,18 +7,14 @@ React 19 · TypeScript · Vite · Tailwind CSS v4 · TanStack Query · React Rou
 
 ## Quick start
 
-Requires Node 22+. Clone both repositories **side by side** — the frontend reads the API
-contract from `../aura-spaceapps-backend/api/openapi.yaml`:
+Requires Node 22+. This folder is part of the AURA monorepo; the API lives in `../backend`
+and its contract `../backend/api/openapi.yaml` is the source of the frontend's API types.
+To run everything in one container, use `docker compose up --build` from the repository root.
+
+Start the backend first (`cd backend && go run ./cmd/aura`), then:
 
 ```bash
-git clone https://github.com/SunatSS/aura-spaceapps-backend.git
-git clone https://github.com/SunatSS/aura-spaceapps-frontend.git
-```
-
-Start the backend first (`cd aura-spaceapps-backend && go run ./cmd/aura`), then:
-
-```bash
-cd aura-spaceapps-frontend
+cd frontend
 npm install
 npm run dev        # http://localhost:5173
 ```
@@ -31,7 +27,7 @@ npm run dev        # http://localhost:5173
 | `npm run build` | Type-check and production build to `dist/` |
 | `npm test` | Unit tests (Vitest) |
 | `npm run lint` | oxlint |
-| `npm run gen:api` | Regenerate API types from `../aura-spaceapps-backend/api/openapi.yaml` |
+| `npm run gen:api` | Regenerate API types from `../backend/api/openapi.yaml` |
 
 Live demo: https://aura-spaceapps.onrender.com (free tier — first load after idle takes about a minute).
 Sign in with one of the demo accounts listed on the sign-in screen (password `aura-mx1`): a crew member
@@ -52,7 +48,7 @@ The AURA team defined the concept, scope, indicators and scenarios and reviewed 
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+Apache License 2.0 — see [LICENSE](../LICENSE).
 
 ## Credits and third-party licenses
 

@@ -3,7 +3,7 @@
  * origin (Vite proxies to the Go backend in dev).
  *
  * Response types come from ./schema.d.ts, generated from
- * aura-spaceapps-backend/api/openapi.yaml by `npm run gen:api` — never hand-edit it.
+ * backend/api/openapi.yaml by `npm run gen:api` — never hand-edit it.
  */
 import type { components } from './schema'
 

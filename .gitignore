@@ -1,7 +1,7 @@
 # Build output
-/bin/
-/aura
-/aura.exe
+/backend/bin/
+/backend/aura
+/backend/aura.exe
 
 # Local SQLite databases
 *.db

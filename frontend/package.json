@@ -10,7 +10,7 @@
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "gen:api": "npx --yes openapi-typescript@7 ../aura-spaceapps-backend/api/openapi.yaml -o src/shared/api/schema.d.ts",
+    "gen:api": "npx --yes openapi-typescript@7 ../backend/api/openapi.yaml -o src/shared/api/schema.d.ts",
     "preview": "vite preview"
   },
   "dependencies": {

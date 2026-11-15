@@ -1,6 +1,6 @@
-# aura-spaceapps-backend
+# AURA backend (`backend/`)
 
-Go API для AURA (Astronaut Universal Readiness Assessment) — инструмент самооценки здоровья астронавта, NASA Space Apps 2026. Веб-интерфейс — репозиторий `aura-spaceapps-frontend`, клонируется рядом.
+Go API для AURA (Astronaut Universal Readiness Assessment) — инструмент самооценки здоровья астронавта, NASA Space Apps 2026. Монорепозиторий: веб-интерфейс — соседняя папка `../frontend`, корневые `Dockerfile` и `docker-compose.yml` собирают оба.
 
 ## Стек
 
@@ -43,8 +43,8 @@ api/embed.go         встраивает openapi.yaml и Swagger UI (api/docs/,
     migrations/      NNNN_name.sql, встраиваются в бинарник через embed
   seed/              демо-миссия к Марсу: 30 суток, перелёт → посадка → поверхность с EVA
   httpapi/           роутинг, middleware, JSON, валидация, раздача собранного фронта (SPA)
-Dockerfile           собирает фронт из репо aura-spaceapps-frontend + Go-бинарник в один образ
-render.yaml          Render Blueprint (бесплатный web service)
+../Dockerfile        (в корне) собирает фронт из ../frontend + Go-бинарник в один образ; ../docker-compose.yml — запуск с томом для БД
+../render.yaml       Render Blueprint (бесплатный web service)
 ```
 
 Направление зависимостей: `httpapi → readiness, guidance, storage → catalog → domain`. `readiness` и `guidance` не знают про БД и HTTP — вся медицинская логика покрыта табличными юнит-тестами.

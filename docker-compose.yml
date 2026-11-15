@@ -1,0 +1,22 @@
+# AURA: API + web UI in one container, data kept in a named volume.
+#   docker compose up --build      → http://localhost:8080
+#   docker compose down -v         → stop and wipe the data (next start re-seeds the demo mission)
+services:
+  aura:
+    build: .
+    image: aura-spaceapps
+    ports:
+      - "${AURA_PORT:-8080}:8080"
+    environment:
+      AURA_HTTP_ADDR: ":8080"
+      AURA_DB_PATH: /data/aura.db
+      AURA_STATIC_DIR: /web
+      AURA_LOG_LEVEL: ${AURA_LOG_LEVEL:-info}
+      AURA_SEED: ${AURA_SEED:-auto}
+      AURA_INGEST_TOKEN: ${AURA_INGEST_TOKEN:-}
+    volumes:
+      - aura-data:/data
+    restart: unless-stopped
+
+volumes:
+  aura-data:

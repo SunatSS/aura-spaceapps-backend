@@ -1,6 +1,6 @@
-# aura-spaceapps-frontend
+# AURA frontend (`frontend/`)
 
-Веб-интерфейс AURA (Astronaut Universal Readiness Assessment) — инструмент самооценки здоровья астронавта, NASA Space Apps 2026. API — репозиторий `aura-spaceapps-backend`, клонируется рядом.
+Веб-интерфейс AURA (Astronaut Universal Readiness Assessment) — инструмент самооценки здоровья астронавта, NASA Space Apps 2026. Монорепозиторий: API — соседняя папка `../backend`.
 
 ## Стек
 
@@ -19,7 +19,7 @@ npm run build        # tsc -b + vite build
 npm run typecheck
 npm run lint         # oxlint
 npm test             # vitest run
-npm run gen:api      # типы из ../aura-spaceapps-backend/api/openapi.yaml → src/shared/api/schema.d.ts
+npm run gen:api      # типы из ../backend/api/openapi.yaml → src/shared/api/schema.d.ts
 ```
 
 Перед тем как считать задачу готовой: `npm run build`, `npm test`, `npm run lint` — всё чисто.

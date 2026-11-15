@@ -5,7 +5,7 @@ info:
   description: |
     Astronaut Universal Readiness Assessment — health monitoring API.
     Source of truth for the backend/frontend contract. The frontend generates
-    TypeScript types from this file (`npm run gen:api` in aura-spaceapps-frontend).
+    TypeScript types from this file (`npm run gen:api` in frontend/).
 
     Timestamps are RFC 3339 in UTC. Statuses everywhere: unknown | nominal | caution | critical.
 
